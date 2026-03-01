@@ -25,8 +25,8 @@ export const config = {
   bot: {
     token: process.env.TELEGRAM_BOT_TOKEN || '',
     adminId: process.env.TELEGRAM_ADMIN_ID || '',
-    username: process.env.BOT_USERNAME || 'MoneyHrumbot',
-    botUrl: process.env.TELEGRAM_BOT_URL || 'https://t.me/MoneyHrumbot',
+    username: process.env.BOT_USERNAME || 'MoneyAXNbot',
+    botUrl: process.env.TELEGRAM_BOT_URL || 'https://t.me/MoneyAXNbot',
   },
 };
 

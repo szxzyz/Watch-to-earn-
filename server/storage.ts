@@ -179,7 +179,7 @@ export interface IStorage {
   
   // Referral Tasks
   getUserReferralTasks(userId: string): Promise<UserReferralTask[]>;
-  claimReferralTask(userId: string, taskId: string): Promise<{ success: boolean; message: string; rewardHrum?: string; miningBoost?: string }>;
+  claimReferralTask(userId: string, taskId: string): Promise<{ success: boolean; message: string; rewardAXN?: string; miningBoost?: string }>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -484,7 +484,7 @@ export class DatabaseStorage implements IStorage {
       const amount = miningState.currentMining;
 
       if (parseFloat(amount) < 1) {
-        return { success: false, amount: "0", message: "Minimum claim is 1 HRUM" };
+        return { success: false, amount: "0", message: "Minimum claim is 1 AXN" };
       }
 
       await db.transaction(async (tx) => {
@@ -509,7 +509,7 @@ export class DatabaseStorage implements IStorage {
         });
       });
 
-      return { success: true, amount, message: `Successfully claimed ${amount} Hrum` };
+      return { success: true, amount, message: `Successfully claimed ${amount} AXN` };
     } catch (error) {
       console.error("Error claiming mining:", error);
       return { success: false, amount: "0", message: "Failed to claim mining" };
@@ -554,7 +554,7 @@ export class DatabaseStorage implements IStorage {
       .values(transaction)
       .returning();
     
-    console.log(`📊 Transaction recorded: ${transaction.type} of ${transaction.amount} Hrum for user ${transaction.userId} - ${transaction.source}`);
+    console.log(`📊 Transaction recorded: ${transaction.type} of ${transaction.amount} AXN for user ${transaction.userId} - ${transaction.source}`);
     return newTransaction;
   }
 
@@ -743,23 +743,23 @@ export class DatabaseStorage implements IStorage {
       .where(eq(userBalances.userId, userId));
   }
 
-  async convertHrumToTon(userId: string, hrumAmount: number): Promise<{ success: boolean; message: string; tonAmount?: number }> {
+  async convertAXNToTon(userId: string, axnAmount: number): Promise<{ success: boolean; message: string; tonAmount?: number }> {
     const user = await this.getUser(userId);
     if (!user) return { success: false, message: "User not found" };
 
     const currentBalance = parseFloat(user.balance || "0");
-    if (currentBalance < hrumAmount) {
-      return { success: false, message: "Insufficient HRUM balance" };
+    if (currentBalance < axnAmount) {
+      return { success: false, message: "Insufficient AXN balance" };
     }
 
-    // 10,000 HRUM = 1 TON
-    const tonAmount = hrumAmount / 10000;
+    // 10,000 AXN = 1 TON
+    const tonAmount = axnAmount / 10000;
 
     await db.transaction(async (tx) => {
-      // Deduct HRUM
+      // Deduct AXN
       await tx.update(users)
         .set({
-          balance: sql`${users.balance} - ${hrumAmount.toString()}`,
+          balance: sql`${users.balance} - ${axnAmount.toString()}`,
           updatedAt: new Date(),
         })
         .where(eq(users.id, userId));
@@ -775,10 +775,10 @@ export class DatabaseStorage implements IStorage {
       // Record transaction
       await tx.insert(transactions).values({
         userId,
-        amount: hrumAmount.toString(),
+        amount: axnAmount.toString(),
         type: 'subtraction',
         source: 'conversion',
-        description: `Converted ${hrumAmount} HRUM to ${tonAmount} TON`,
+        description: `Converted ${axnAmount} AXN to ${tonAmount} TON`,
       });
     });
 
@@ -836,7 +836,7 @@ export class DatabaseStorage implements IStorage {
         userId,
         amount: rewardEarned,
         source: 'bonus_claim',
-        description: `Bonus claim - earned 1 Hrum`,
+        description: `Bonus claim - earned 1 AXN`,
       });
     }
 
@@ -1017,7 +1017,7 @@ export class DatabaseStorage implements IStorage {
     return referral;
   }
 
-  // Check and activate referral bonus when friend watches required number of ads (Hrum +  rewards)
+  // Check and activate referral bonus when friend watches required number of ads (AXN +  rewards)
   // Uses admin-configured 'referral_ads_required' setting instead of hardcoded value
   async checkAndActivateReferralBonus(userId: string): Promise<void> {
     try {
@@ -1052,7 +1052,7 @@ export class DatabaseStorage implements IStorage {
 
         // Get referral reward settings from admin (no hardcoded values)
         const referralRewardEnabled = await this.getAppSetting('referral_reward_enabled', 'false');
-        const referralRewardHrum = parseInt(await this.getAppSetting('referral_reward_hrum', '50'));
+        const referralRewardAXN = parseInt(await this.getAppSetting('referral_reward_axn', '50'));
         const referralReward = parseFloat(await this.getAppSetting('referral_reward_usd', '0.0005'));
 
         // Find pending referrals where this user is the referee
@@ -1076,12 +1076,12 @@ export class DatabaseStorage implements IStorage {
             })
             .where(eq(referrals.id, referral.id));
 
-    // Award Hrum referral bonus to referrer (uses admin-configured amount)
+    // Award AXN referral bonus to referrer (uses admin-configured amount)
     await this.addEarning({
       userId: referral.referrerId,
-      amount: String(referralRewardHrum),
+      amount: String(referralRewardAXN),
       source: 'referral',
-      description: `Referral bonus - friend watched ${referralAdsRequired} ads (+${referralRewardHrum} Hrum)`,
+      description: `Referral bonus - friend watched ${referralAdsRequired} ads (+${referralRewardAXN} AXN)`,
     });
 
     // Award bonus if enabled (uses admin-configured amount)
@@ -1111,11 +1111,11 @@ export class DatabaseStorage implements IStorage {
       })
       .where(eq(users.id, referral.referrerId));
 
-    console.log(`✅ Referral bonus: ${referralRewardHrum} Hrum awarded and friendsInvited incremented for ${referral.referrerId}`);
+    console.log(`✅ Referral bonus: ${referralRewardAXN} AXN awarded and friendsInvited incremented for ${referral.referrerId}`);
 
     /* 
     // CRITICAL: Send ONLY ONE notification to referrer when their friend watches their first ad
-    // Uses  reward amount from Admin Settings (no Hrum/commission messages)
+    // Uses  reward amount from Admin Settings (no AXN/commission messages)
     try {
       const { sendReferralRewardNotification } = await import('./telegram');
       const referrer = await this.getUser(referral.referrerId);
@@ -1123,7 +1123,7 @@ export class DatabaseStorage implements IStorage {
       
       if (referrer && referrer.telegram_id && referredUser) {
         const referredName = referredUser.username || referredUser.firstName || 'your friend';
-        // Send notification with  amount from Admin Settings (not Hrum)
+        // Send notification with  amount from Admin Settings (not AXN)
         await sendReferralRewardNotification(
           referrer.telegram_id,
           referredName,
@@ -1436,12 +1436,12 @@ export class DatabaseStorage implements IStorage {
         .where(eq(promoCodes.id, promoCode.id));
 
       // Apply reward based on type and currency
-      if (rewardType === 'Hrum') {
-        const hrumReward = rewardAmount; // Use exact amount
+      if (rewardType === 'AXN') {
+        const axnReward = rewardAmount; // Use exact amount
         await tx.update(users)
           .set({ 
-            balance: sql`COALESCE(${users.balance}, 0) + ${hrumReward}`,
-            totalEarnings: sql`COALESCE(${users.totalEarnings}, 0) + ${hrumReward}`,
+            balance: sql`COALESCE(${users.balance}, 0) + ${axnReward}`,
+            totalEarnings: sql`COALESCE(${users.totalEarnings}, 0) + ${axnReward}`,
             updatedAt: new Date()
           })
           .where(eq(users.id, userId));
@@ -1684,7 +1684,7 @@ export class DatabaseStorage implements IStorage {
         .select({ count: sql<number>`count(*)` })
         .from(referrals);
 
-      // Total earnings (Hrum)
+      // Total earnings (AXN)
       const [totalEarningsResult] = await db
         .select({ total: sql<string>`COALESCE(SUM(CAST(total_earnings AS NUMERIC)), '0')` })
         .from(users);
@@ -3714,14 +3714,14 @@ export class DatabaseStorage implements IStorage {
         .limit(1);
       const partnerReward = parseInt(partnerRewardSetting[0]?.settingValue || '5');
       
-      const rewardHrum = task.taskType === 'partner' ? partnerReward : 
+      const rewardAXN = task.taskType === 'partner' ? partnerReward : 
                         parseInt(rewardSetting[0]?.settingValue || (task.taskType === 'bot' ? '20' : '30'));
 
       // Insert click record
       await db.insert(taskClicks).values({
         taskId: taskId,
         publisherId: publisherId,
-        rewardAmount: rewardHrum.toString(),
+        rewardAmount: rewardAXN.toString(),
       });
 
       // Increment current clicks on the task
@@ -3745,7 +3745,7 @@ export class DatabaseStorage implements IStorage {
         .where(eq(users.id, publisherId));
 
       const currentBalance = parseInt(publisher?.balance || '0');
-      const newBalance = currentBalance + rewardHrum;
+      const newBalance = currentBalance + rewardAXN;
 
       await db
         .update(users)
@@ -3758,17 +3758,17 @@ export class DatabaseStorage implements IStorage {
       // Record the earning
       await db.insert(earnings).values({
         userId: publisherId,
-        amount: rewardHrum.toString(),
+        amount: rewardAXN.toString(),
         source: 'task_completion',
         description: `Completed ${task.taskType} task: ${task.title}`,
       });
 
-      console.log(`✅ Task click recorded: ${taskId} by ${publisherId} - Reward: ${rewardHrum} Hrum`);
+      console.log(`✅ Task click recorded: ${taskId} by ${publisherId} - Reward: ${rewardAXN} AXN`);
 
       return {
         success: true,
         message: "Task click recorded successfully",
-        reward: rewardHrum,
+        reward: rewardAXN,
         task: {
           ...task,
           currentClicks: newClickCount,
@@ -3973,10 +3973,10 @@ export class DatabaseStorage implements IStorage {
         return false;
       }
 
-      if (currency === 'HRUM') {
+      if (currency === 'AXN') {
         const currentBalance = parseFloat(user.balance || '0');
         if (currentBalance < amountNum) {
-          console.error(`Insufficient Hrum balance: ${currentBalance} < ${amountNum}`);
+          console.error(`Insufficient AXN balance: ${currentBalance} < ${amountNum}`);
           return false;
         }
         const newBalance = Math.round(currentBalance - amountNum).toString();
@@ -4023,7 +4023,7 @@ export class DatabaseStorage implements IStorage {
       .map(task => ({
         ...task,
         isAdminTask: true,
-        rewardHrum: Math.round(parseFloat(task.costPerClick || '0.0001750') * 10000000),
+        rewardAXN: Math.round(parseFloat(task.costPerClick || '0.0001750') * 10000000),
       }));
   }
 
@@ -4164,18 +4164,18 @@ export class DatabaseStorage implements IStorage {
     return db.select().from(userReferralTasks).where(eq(userReferralTasks.userId, userId));
   }
 
-  async claimReferralTask(userId: string, taskId: string): Promise<{ success: boolean; message: string; rewardHrum?: string; miningBoost?: string }> {
+  async claimReferralTask(userId: string, taskId: string): Promise<{ success: boolean; message: string; rewardAXN?: string; miningBoost?: string }> {
     const { userReferralTasks } = await import("../shared/schema");
     const user = await this.getUser(userId);
     if (!user) throw new Error("User not found");
 
     const tasks = [
-      { id: 'task_1', required: 1, rewardHrum: '1', boost: '0.0001' },
-      { id: 'task_2', required: 3, rewardHrum: '3', boost: '0.0003' },
-      { id: 'task_3', required: 10, rewardHrum: '5', boost: '0.0005' },
-      { id: 'task_4', required: 25, rewardHrum: '10', boost: '0.001' },
-      { id: 'task_5', required: 50, rewardHrum: '25', boost: '0.002' },
-      { id: 'task_6', required: 100, rewardHrum: '30', boost: '0.003' },
+      { id: 'task_1', required: 1, rewardAXN: '1', boost: '0.0001' },
+      { id: 'task_2', required: 3, rewardAXN: '3', boost: '0.0003' },
+      { id: 'task_3', required: 10, rewardAXN: '5', boost: '0.0005' },
+      { id: 'task_4', required: 25, rewardAXN: '10', boost: '0.001' },
+      { id: 'task_5', required: 50, rewardAXN: '25', boost: '0.002' },
+      { id: 'task_6', required: 100, rewardAXN: '30', boost: '0.003' },
     ];
 
     const task = tasks.find(t => t.id === taskId);
@@ -4198,12 +4198,12 @@ export class DatabaseStorage implements IStorage {
       // 1. Record claim
       await tx.insert(userReferralTasks).values({ userId, taskId });
 
-      // 2. Add Hrum reward
+      // 2. Add AXN reward
       await tx.update(users)
         .set({ 
-          balance: sql`COALESCE(${users.balance}, 0) + ${task.rewardHrum}`,
-          withdrawBalance: sql`COALESCE(${users.withdrawBalance}, 0) + ${task.rewardHrum}`,
-          totalEarned: sql`COALESCE(${users.totalEarned}, 0) + ${task.rewardHrum}`,
+          balance: sql`COALESCE(${users.balance}, 0) + ${task.rewardAXN}`,
+          withdrawBalance: sql`COALESCE(${users.withdrawBalance}, 0) + ${task.rewardAXN}`,
+          totalEarned: sql`COALESCE(${users.totalEarned}, 0) + ${task.rewardAXN}`,
           updatedAt: new Date()
         })
         .where(eq(users.id, userId));
@@ -4214,14 +4214,14 @@ export class DatabaseStorage implements IStorage {
       await tx.insert(miningBoosts).values({
         userId,
         planId: `referral_${taskId}`,
-        miningRate: (parseFloat(task.boost) / 3600).toFixed(10), // Convert HRUM/h to HRUM/s
+        miningRate: (parseFloat(task.boost) / 3600).toFixed(10), // Convert AXN/h to AXN/s
         expiresAt,
       });
 
       // 4. Log transaction
       await tx.insert(transactions).values({
         userId,
-        amount: task.rewardHrum,
+        amount: task.rewardAXN,
         type: 'addition',
         source: 'referral_task',
         description: `Claimed reward for ${task.required} invites`,
@@ -4229,7 +4229,7 @@ export class DatabaseStorage implements IStorage {
       });
     });
 
-    return { success: true, message: "Reward claimed successfully!", rewardHrum: task.rewardHrum, miningBoost: task.boost };
+    return { success: true, message: "Reward claimed successfully!", rewardAXN: task.rewardAXN, miningBoost: task.boost };
   }
 }
 
