@@ -335,16 +335,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
     });
   });
   
-  app.get("/api/auth/user", authenticateTelegram, async (req: any, res) => {
-    try {
-      const user = req.user?.user;
-      if (!user) return res.status(401).json({ message: "Not authenticated" });
-      
-      res.json(user);
-    } catch (error) {
-      res.status(500).json({ message: "Internal server error" });
-    }
-  });
 
   app.get("/api/admin/settings", authenticateAdmin, async (req, res) => {
     try {
@@ -1327,60 +1317,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Auth routes
-  app.get('/api/auth/user', authenticateTelegram, async (req: any, res) => {
-    try {
-      const userId = req.user.user.id; // Use the database UUID, not Telegram ID
-      const user = await storage.getUser(userId);
-      
-      if (!user) {
-        return res.status(404).json({ message: "User not found" });
-      }
-      
-      // Ensure referralCode exists
-      if (!user.referralCode) {
-        await storage.generateReferralCode(userId);
-        const updatedUser = await storage.getUser(userId);
-        user.referralCode = updatedUser?.referralCode || '';
-      }
-      
-      // Ensure friendsInvited is properly calculated from COMPLETED referrals only
-      // Pending referrals (where friend hasn't watched their first ad) don't count
-      // Also exclude banned users from referral count
-      const actualReferralsCount = await db
-        .select({ count: sql<number>`count(*)` })
-        .from(referrals)
-        .innerJoin(users, eq(referrals.refereeId, users.id))
-        .where(and(
-          eq(referrals.referrerId, userId),
-          eq(referrals.status, 'completed'),
-          eq(users.banned, false)
-        ));
-      
-      const friendsInvited = actualReferralsCount[0]?.count || 0;
-      
-      // Update DB if count is different (sync)
-      if (user.friendsInvited !== friendsInvited) {
-        await db
-          .update(users)
-          .set({ friendsInvited: friendsInvited })
-          .where(eq(users.id, userId));
-      }
-      
-      // Add referral link with fallback bot username - use /start flow for reliable referral tracking
-      const botUsername = process.env.BOT_USERNAME || "MoneyAXNbot";
-      const referralLink = `https://t.me/${botUsername}?start=${user.referralCode}`;
-      
-      res.json({
-        ...user,
-        friendsInvited,
-        referralLink
-      });
-    } catch (error) {
-      console.error("Error fetching user:", error);
-      res.status(500).json({ message: "Failed to fetch user" });
-    }
-  });
 
   // Balance refresh endpoint - used after conversion to sync frontend
   app.get('/api/user/balance/refresh', async (req: any, res) => {
