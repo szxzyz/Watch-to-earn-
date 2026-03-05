@@ -7,13 +7,6 @@ import connectPg from "connect-pg-simple";
 import crypto from "crypto";
 import { storage } from "./storage";
 import { pool } from "./db";
-import { 
-  validateDeviceAndDetectDuplicate, 
-  banUserForMultipleAccounts,
-  sendWarningToMainAccount,
-  createBanLog,
-  type DeviceInfo 
-} from "./deviceTracking";
 import { users } from "../shared/schema";
 import { db } from "./db";
 import { eq } from "drizzle-orm";
@@ -107,34 +100,8 @@ export function verifyTelegramWebAppData(initData: string, botToken: string): { 
 export const authenticateTelegram: RequestHandler = async (req: any, res, next) => {
   try {
     const telegramData = req.headers['x-telegram-data'] || req.query.tgData;
-    
-    // Extract device tracking information
-    const deviceId = req.headers['x-device-id'] as string;
-    const deviceFingerprint = req.headers['x-device-fingerprint'];
-    const clientIP = getClientIP(req);
-    const userAgent = req.headers['user-agent'] as string;
-    const appVersion = req.headers['x-app-version'] as string;
-    
-    // Build comprehensive device info for tracking
-    let deviceInfo: DeviceInfo | null = null;
-    if (deviceId || clientIP !== 'unknown') {
-      let fingerprint: any = null;
-      try {
-        fingerprint = deviceFingerprint ? JSON.parse(deviceFingerprint as string) : {
-          userAgent: userAgent,
-          platform: req.headers['sec-ch-ua-platform'],
-        };
-      } catch (e) {
-        fingerprint = { userAgent };
-      }
-      
-      deviceInfo = {
-        deviceId: deviceId || `ip_${clientIP}`,
-        fingerprint,
-        ip: clientIP,
-        userAgent,
-      };
-    }
+    const clientIp = getClientIP(req);
+    const userAgent = req.headers['user-agent'] || 'unknown';
     
     // Check for existing session first (before requiring Telegram data)
     if (!telegramData && req.session?.user?.user?.id) {
@@ -163,38 +130,18 @@ export const authenticateTelegram: RequestHandler = async (req: any, res, next) 
         if (existingUser) {
           upsertedUser = existingUser;
         } else {
-          const { user } = await storage.upsertUser({
-            id: testUserId,
-            email: `${testUser.username}@telegram.user`,
+          const { user } = await storage.upsertTelegramUser(testUser.id.toString(), {
             firstName: testUser.first_name,
             lastName: testUser.last_name,
             username: testUser.username,
-            telegram_id: testUser.id.toString(),
-            personalCode: testUser.username || testUser.id.toString(),
-            withdrawBalance: '0',
-            totalEarnings: '0',
-            adsWatched: 0,
-            dailyAdsWatched: 0,
-            dailyEarnings: '0',
-            level: 1,
-            flagged: false,
-            banned: false,
-            referralCode: 'ff0269235650', // Use migrated test user code
+            last_login_ip: clientIp,
+            last_login_user_agent: userAgent,
           });
           upsertedUser = user;
         }
       } catch (upsertError) {
         console.error('❌ Failed to upsert test user:', upsertError);
         return res.status(500).json({ message: "Development authentication failed" });
-      }
-      
-      // Ensure test user has referral code
-      if (!upsertedUser.referralCode) {
-        try {
-          await storage.generateReferralCode(upsertedUser.id);
-        } catch (error) {
-          console.error('Failed to generate referral code in auth:', error);
-        }
       }
       
       req.user = { 
@@ -235,113 +182,23 @@ export const authenticateTelegram: RequestHandler = async (req: any, res, next) 
       });
     }
     
-    if (deviceInfo) {
-      const deviceValidation = await validateDeviceAndDetectDuplicate(
-        telegramUser.id.toString(),
-        deviceInfo
-      );
-      
-      if (deviceValidation.shouldBan) {
-        // CRITICAL: Create or update user as banned to persist the ban in database
-        let bannedUser;
-        const { user: existingUser } = await storage.getTelegramUser(telegramUser.id.toString());
-        
-        if (existingUser) {
-          // User exists, ban them
-          await banUserForMultipleAccounts(
-            existingUser.id,
-            deviceValidation.reason || "Multiple accounts detected on the same device"
-          );
-          bannedUser = existingUser;
-        } else {
-          // User doesn't exist yet, create them as banned
-          const { user: newBannedUser } = await storage.upsertTelegramUser(telegramUser.id.toString(), {
-            email: `${telegramUser.username || telegramUser.id}@telegram.user`,
-            firstName: telegramUser.first_name,
-            lastName: telegramUser.last_name,
-            username: telegramUser.username,
-            personalCode: telegramUser.username || telegramUser.id.toString(),
-            withdrawBalance: '0',
-            totalEarnings: '0',
-            adsWatched: 0,
-            dailyAdsWatched: 0,
-            dailyEarnings: '0',
-            level: 1,
-            flagged: false,
-            banned: true,  // Create as banned
-            bannedReason: deviceValidation.reason || "Multiple accounts detected on the same device",
-            referralCode: '',
-          }, deviceInfo);
-          bannedUser = newBannedUser;
-        }
-        
-        // Send warning to primary account
-        if (deviceValidation.primaryAccountId) {
-          await sendWarningToMainAccount(deviceValidation.primaryAccountId);
-        }
-        
-        console.log(`🚫 Duplicate account banned: ${bannedUser.id} (Telegram: ${telegramUser.id})`);
-        
-        return res.status(403).json({ 
-          banned: true,
-          message: "Your account has been banned for violating our multi-account policy. Only one account per device is allowed. Contact support: https://t.me/szxzyz",
-          reason: deviceValidation.reason
-        });
-      }
-    }
-    
     // Get or create user in database using Telegram-specific method
     const { user: upsertedUser, isNewUser } = await storage.upsertTelegramUser(telegramUser.id.toString(), {
-      email: `${telegramUser.username || telegramUser.id}@telegram.user`,
       firstName: telegramUser.first_name,
       lastName: telegramUser.last_name,
       username: telegramUser.username,
-      personalCode: telegramUser.username || telegramUser.id.toString(),
-      withdrawBalance: '0',
-      totalEarnings: '0',
-      adsWatched: 0,
-      dailyAdsWatched: 0,
-      dailyEarnings: '0',
-      level: 1,
-      flagged: false,
-      banned: false,
-      referralCode: '',
-    }, deviceInfo);
+      last_login_ip: clientIp,
+      last_login_user_agent: userAgent,
+    });
     
     // CRITICAL: Check if returning user is already banned
     if (upsertedUser.banned) {
       console.log(`🚫 Banned user attempted login: ${upsertedUser.id} (Telegram: ${telegramUser.id})`);
       return res.status(403).json({ 
         banned: true,
-        message: "Your account has been banned due to suspicious multi-account activity. Contact support: https://t.me/szxzyz",
-        reason: upsertedUser.bannedReason || "Account banned"
+        message: "Your account has been banned. Contact support.",
+        reason: upsertedUser.banned_reason || "Account banned"
       });
-    }
-    
-    // Update user tracking data on every login (IP, user agent, app version, etc.)
-    try {
-      await db.update(users).set({
-        lastLoginAt: new Date(),
-        lastLoginIp: clientIP,
-        lastLoginUserAgent: userAgent,
-        lastLoginDevice: deviceId || deviceInfo?.deviceId,
-        appVersion: appVersion || undefined,
-        browserFingerprint: deviceInfo?.fingerprint ? JSON.stringify(deviceInfo.fingerprint) : undefined,
-        updatedAt: new Date(),
-      }).where(eq(users.id, upsertedUser.id));
-      console.log(`📍 Updated tracking data for user ${upsertedUser.id}: IP=${clientIP}`);
-    } catch (trackingError) {
-      console.error('⚠️ Failed to update user tracking data:', trackingError);
-    }
-    
-    // Send welcome message for new users with referral code
-    if (isNewUser) {
-      try {
-        const { sendWelcomeMessage } = await import('./telegram');
-        await sendWelcomeMessage(telegramUser.id.toString());
-      } catch (error) {
-        console.error('❌ Failed to send welcome message:', error);
-      }
     }
     
     req.user = { 
