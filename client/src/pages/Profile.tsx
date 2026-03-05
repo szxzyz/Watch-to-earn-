@@ -26,7 +26,7 @@ import TransactionsOverlay from "@/components/TransactionsOverlay";
 import TopUpPopup from "@/components/TopUpPopup";
 import WithdrawalPopup from "@/components/WithdrawalPopup";
 
-type Language = 'en' | 'hi' | 'ru' | 'fa' | 'ar' | 'tr' | 'es' | 'pt' | 'id' | 'ur' | 'bn' | 'fr' | 'de' | 'it' | 'zh' | 'ja' | 'ko';
+type Language = 'en' | 'ru';
 
 export default function Profile() {
   const { user } = useAuth();
@@ -41,22 +41,7 @@ export default function Profile() {
 
   const languages: { code: Language, name: string, flag: string }[] = [
     { code: 'en', name: 'English', flag: '🇺🇸' },
-    { code: 'hi', name: 'हिंदी', flag: '🇮🇳' },
     { code: 'ru', name: 'Русский', flag: '🇷🇺' },
-    { code: 'fa', name: 'فارسی', flag: '🇮🇷' },
-    { code: 'ar', name: 'العربية', flag: '🇸🇦' },
-    { code: 'tr', name: 'Türkçe', flag: '🇹🇷' },
-    { code: 'es', name: 'Español', flag: '🇪🇸' },
-    { code: 'pt', name: 'Português', flag: '🇧🇷' },
-    { code: 'id', name: 'Bahasa Indonesia', flag: '🇮🇩' },
-    { code: 'ur', name: 'اردو', flag: '🇵🇰' },
-    { code: 'bn', name: 'বাংলা', flag: '🇧🇩' },
-    { code: 'fr', name: 'Français', flag: '🇫🇷' },
-    { code: 'de', name: 'Deutsch', flag: '🇩🇪' },
-    { code: 'it', name: 'Italiano', flag: '🇮🇹' },
-    { code: 'zh', name: '中文', flag: '🇨🇳' },
-    { code: 'ja', name: '日本語', flag: '🇯🇵' },
-    { code: 'ko', name: '한국어', flag: '🇰🇷' },
   ];
 
   const uid = (user as any)?.referralCode || (user as any)?.id?.slice(0, 8) || '00000';
@@ -89,23 +74,23 @@ export default function Profile() {
       title: t('terms_conditions'),
       content: (
         <div className="space-y-4 text-gray-400 text-sm">
-          <p className="text-[#B9FF66] font-bold">Last Updated: January 21, 2026</p>
+          <p className="text-[#B9FF66] font-bold">Last Updated: March 05, 2026</p>
           <p>Welcome to Money AXN. By accessing or using this app, you agree to comply with these Terms & Conditions. If you do not agree, please do not use the app.</p>
           <div>
             <h4 className="text-white font-bold mb-1 italic uppercase tracking-tighter">1. Eligibility</h4>
             <p>Users must be at least 13 years old. You represent that you are of legal age to form a binding contract. You are responsible for maintaining the confidentiality of your account and all activities that occur under your account.</p>
           </div>
           <div>
-            <h4 className="text-white font-bold mb-1 italic uppercase tracking-tighter">2. AXN Mining & Rewards</h4>
-            <p>Money AXN is a free AXN mining application. Users can mine AXN tokens through free mining activities and boost their mining speed through optional investments. Mined AXN is credited to your virtual balance and can be converted to TON for withdrawal.</p>
+            <h4 className="text-white font-bold mb-1 italic uppercase tracking-tighter">2. AXN Rewards</h4>
+            <p>Money AXN is a free token earning application. Users can earn AXN tokens by completing tasks and referring others. AXN is credited to your virtual balance and can be converted to TON for withdrawal.</p>
           </div>
           <div>
-            <h4 className="text-white font-bold mb-1 italic uppercase tracking-tighter">3. Mining Boost & Investment</h4>
-            <p>Users can optionally invest TON to boost their mining speed. Mining boosts are time-limited and increase the rate at which AXN is mined. Investment in mining boosts is voluntary and subject to the terms displayed at the time of purchase.</p>
+            <h4 className="text-white font-bold mb-1 italic uppercase tracking-tighter">3. Tasks & Referrals</h4>
+            <p>Users earn rewards by completing advertiser tasks or inviting new users. Referral commissions are earned from the activities of successfully referred users.</p>
           </div>
           <div>
             <h4 className="text-white font-bold mb-1 italic uppercase tracking-tighter">4. Withdrawals</h4>
-            <p>AXN tokens can be converted to TON and withdrawn to your personal wallet. Withdrawals are subject to system verification, minimum limits, and available liquidity. Users must provide valid wallet addresses. We reserve the right to delay or cancel withdrawals for security audits or suspected fraudulent activity.</p>
+            <p>AXN tokens can be converted to TON and withdrawn to your personal wallet. Withdrawals are subject to system verification, minimum limits, and available liquidity. Users must provide valid wallet addresses.</p>
           </div>
           <div>
             <h4 className="text-white font-bold mb-1 italic uppercase tracking-tighter">5. Account Suspension & Bans</h4>
@@ -113,7 +98,7 @@ export default function Profile() {
           </div>
           <div>
             <h4 className="text-white font-bold mb-1 italic uppercase tracking-tighter">6. Fraud & Abuse</h4>
-            <p>Any attempt to manipulate the mining system, exploit technical vulnerabilities, or provide false information during verification will result in immediate termination of the account and forfeiture of all accumulated rewards.</p>
+            <p>Any attempt to manipulate the system, exploit technical vulnerabilities, or provide false information during verification will result in immediate termination of the account and forfeiture of all accumulated rewards.</p>
           </div>
         </div>
       )
@@ -125,7 +110,7 @@ export default function Profile() {
           <p>Money AXN respects your privacy and is committed to protecting your personal data.</p>
           <div>
             <h4 className="text-white font-bold mb-1 italic uppercase tracking-tighter">1. Data Collection</h4>
-            <p>We collect essential data to provide our AXN mining services, including your Telegram User ID (UID), device information (model, OS version), IP address, app usage statistics, and mining activity history.</p>
+            <p>We collect essential data to provide our services, including your Telegram User ID (UID), device information (model, OS version), IP address, and app usage statistics.</p>
           </div>
           <div>
             <h4 className="text-white font-bold mb-1 italic uppercase tracking-tighter">2. Data Storage & Security</h4>
@@ -133,7 +118,7 @@ export default function Profile() {
           </div>
           <div>
             <h4 className="text-white font-bold mb-1 italic uppercase tracking-tighter">3. Third-Party Services</h4>
-            <p>We integrate with third-party payment gateways for processing TON transactions. These services may collect non-personal data according to their own privacy policies for the purpose of transaction processing.</p>
+            <p>We integrate with third-party payment gateways for processing TON transactions. These services may collect non-personal data according to their own privacy policies.</p>
           </div>
           <div>
             <h4 className="text-white font-bold mb-1 italic uppercase tracking-tighter">4. Your Rights</h4>
@@ -146,16 +131,16 @@ export default function Profile() {
       title: t('acceptable_use'),
       content: (
         <div className="space-y-4 text-gray-400 text-sm">
-          <p>To maintain a fair AXN mining ecosystem for all users, you must adhere to the following rules:</p>
+          <p>To maintain a fair ecosystem for all users, you must adhere to the following rules:</p>
           <div>
             <h4 className="text-rose-400 font-bold mb-1 flex items-center gap-2 italic uppercase tracking-tighter">
               Prohibited Actions
             </h4>
             <ul className="list-disc pl-5 space-y-1">
               <li>Creating or managing multiple accounts for a single user.</li>
-              <li>Using automated bots, scripts, or any third-party software to simulate mining activity.</li>
+              <li>Using automated bots, scripts, or any third-party software to simulate activity.</li>
               <li>Exploiting technical vulnerabilities or bugs for unauthorized gain.</li>
-              <li>Attempting to manipulate the AXN mining or conversion rates.</li>
+              <li>Attempting to manipulate conversion rates.</li>
               <li>Reverse-engineering, decompiling, or attempting to extract source code from the app.</li>
             </ul>
           </div>
@@ -164,14 +149,14 @@ export default function Profile() {
               <ShieldCheck className="w-4 h-4 text-[#B9FF66]" />
               Multi-Account Abuse
             </h4>
-            <p>Our system employs advanced detection for multi-account activity. Users found operating multiple profiles to inflate referral rewards or mining earnings will face permanent bans across all linked accounts.</p>
+            <p>Our system employs advanced detection for multi-account activity. Users found operating multiple profiles to inflate referral rewards will face permanent bans across all linked accounts.</p>
           </div>
           <div>
             <h4 className="text-white font-bold mb-1 flex items-center gap-2 italic uppercase tracking-tighter">
               <Check className="w-4 h-4 text-green-500" />
               Compliance
             </h4>
-            <p>All users must use the app in compliance with applicable local and international laws. We cooperate with law enforcement agencies in cases of suspected illegal activity.</p>
+            <p>All users must use the app in compliance with applicable local and international laws.</p>
           </div>
         </div>
       )

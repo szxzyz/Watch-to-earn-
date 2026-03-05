@@ -120,83 +120,6 @@ export default function Home() {
     retry: false,
   });
 
-  const { data: miningState, isLoading: isLoadingMining } = useQuery<any>({
-    queryKey: ['/api/mining/state'],
-    retry: false,
-    staleTime: 10000,
-  });
-
-  const miningStateData = miningState || {};
-  const [miningAmount, setMiningAmount] = useState(0);
-  const activeBoosts = miningStateData.boosts || [];
-  
-  const miningRate = parseFloat(miningStateData.rawMiningRate || "0.00001");
-  const miningRatePerHour = miningRate * 3600;
-
-  useEffect(() => {
-    if (miningStateData.currentMining) {
-      setMiningAmount(parseFloat(miningStateData.currentMining));
-    }
-  }, [miningStateData.currentMining]);
-
-  useEffect(() => {
-    const interval = setInterval(() => {
-      setMiningAmount(prev => prev + miningRate);
-    }, 1000);
-    return () => clearInterval(interval);
-  }, [miningRate]);
-
-  useEffect(() => {
-    const timer = setInterval(() => {
-      queryClient.setQueryData(['/api/mining/state'], (old: any) => {
-        if (!old || !old.boosts) return old;
-        return {
-          ...old,
-          boosts: old.boosts.map((b: any) => ({
-            ...b,
-            remainingTime: Math.max(0, b.remainingTime - 1)
-          }))
-        };
-      });
-    }, 1000);
-    return () => clearInterval(timer);
-  }, [queryClient]);
-
-  const formatRemainingTime = (seconds: number) => {
-    if (seconds <= 0) return "Expired";
-    const days = Math.floor(seconds / (24 * 3600));
-    const hours = Math.floor((seconds % (24 * 3600)) / 3600);
-    const minutes = Math.floor((seconds % 3600) / 60);
-    const secs = seconds % 60;
-    
-    if (days > 0) return `${days}d ${hours}h`;
-    return `${hours}h ${minutes}m ${secs}s`;
-  };
-
-  const claimMiningMutation = useMutation({
-    mutationFn: async () => {
-      const response = await apiRequest("POST", "/api/mining/claim");
-      if (!response.ok) {
-        const error = await response.json();
-        throw new Error(error.message || 'Failed to claim mining');
-      }
-      return response.json();
-    },
-    onSuccess: (data) => {
-      queryClient.invalidateQueries({ queryKey: ["/api/auth/user"] });
-      queryClient.invalidateQueries({ queryKey: ["/api/mining/state"] });
-      showNotification(`+${Number(parseFloat(data.amount).toFixed(2)).toString()} AXN claimed from mining!`, "success");
-    },
-    onError: (error: any) => {
-      showNotification(error.message, "error");
-    },
-  });
-
-  const minMiningClaim = 1;
-  const canClaimMining = miningState && parseFloat(miningState.minedAmount) >= minMiningClaim;
-
-  // Render mining section (need to find where it is in the file)
-
   const { data: userData } = useQuery<{ referralCode?: string }>({
     queryKey: ['/api/auth/user'],
     retry: false,
@@ -1293,7 +1216,7 @@ export default function Home() {
 
           <div className="bg-[#141414] rounded-2xl px-4 py-2 flex justify-between items-center mb-4 border border-white/5 h-12">
             <div className="flex flex-col items-center flex-1">
-              <span className="text-[#8E8E93] text-[9px] font-semibold uppercase tracking-wider mb-0.5">{t('total_axn_mined')}</span>
+              <span className="text-[#8E8E93] text-[9px] font-semibold uppercase tracking-wider mb-0.5">{t('balance')}</span>
               <div className="flex items-center gap-1.5 leading-none">
                 <div className="w-4 h-4 flex items-center justify-center flex-shrink-0">
                   <img src="/images/axn-logo.jpg" alt="AXN" className="w-full h-full object-cover rounded-sm" />
@@ -1306,7 +1229,7 @@ export default function Home() {
             <div className="w-[1px] h-6 bg-white/10 mx-1"></div>
             <div className="flex flex-col items-center flex-1">
               <div className="flex items-center gap-1 mb-0.5 leading-none">
-                <span className="text-[#8E8E93] text-[9px] font-semibold uppercase tracking-wider">{t('total_ton_earned')}</span>
+                <span className="text-[#8E8E93] text-[9px] font-semibold uppercase tracking-wider">{t('ton_balance')}</span>
               </div>
               <div className="flex items-center gap-1.5 leading-none">
                 <div className="w-4 h-4 flex items-center justify-center flex-shrink-0">
@@ -1319,15 +1242,25 @@ export default function Home() {
             </div>
           </div>
 
-          <Tabs defaultValue="mine" className="w-full">
-            <TabsList className="grid w-full grid-cols-2 bg-[#0d0d0d] border border-white/5 h-12 p-1 rounded-xl mb-4 shadow-inner">
-              <TabsTrigger 
-                value="mine" 
-                className="flex items-center justify-center gap-2 font-black text-[10px] uppercase tracking-wider rounded-lg data-[state=active]:bg-blue-600 data-[state=active]:text-white data-[state=inactive]:text-white/40 transition-all h-full"
-              >
-                <Zap className="w-3.5 h-3.5" />
-                {t('mine').toUpperCase()}
-              </TabsTrigger>
+          <div className="grid grid-cols-2 gap-3 mb-4">
+            <Button
+              onClick={() => setConvertPopupOpen(true)}
+              className="w-full h-11 bg-white hover:bg-zinc-200 text-black rounded-xl font-black text-xs uppercase tracking-widest transition-all shadow-lg shadow-white/5"
+            >
+              <RefreshCw className="w-4 h-4 mr-2" />
+              {t('convert')}
+            </Button>
+            <Button
+              onClick={() => setPromoPopupOpen(true)}
+              className="w-full h-11 bg-white hover:bg-zinc-200 text-black rounded-xl font-black text-xs uppercase tracking-widest transition-all shadow-lg shadow-white/5"
+            >
+              <Ticket className="w-4 h-4 mr-2" />
+              {t('promo')}
+            </Button>
+          </div>
+
+          <Tabs defaultValue="referrals" className="w-full">
+            <TabsList className="grid w-full grid-cols-1 bg-[#0d0d0d] border border-white/5 h-12 p-1 rounded-xl mb-4 shadow-inner">
               <TabsTrigger 
                 value="referrals" 
                 className="flex items-center justify-center gap-2 font-black text-[10px] uppercase tracking-wider rounded-lg data-[state=active]:bg-blue-600 data-[state=active]:text-white data-[state=inactive]:text-white/40 transition-all h-full"
@@ -1336,91 +1269,6 @@ export default function Home() {
                 {t('referrals').toUpperCase()}
               </TabsTrigger>
             </TabsList>
-
-            <TabsContent value="mine" className="mt-0 outline-none overflow-hidden">
-              <div className="bg-[#141414] rounded-2xl p-4 border border-white/5 mb-1">
-                <div className="flex justify-between items-center mb-4">
-                  <span className="text-[#8E8E93] text-[10px] font-black uppercase tracking-widest">{t('mining_status')}</span>
-                  <div className="flex items-center gap-1.5">
-                    <div className="w-1.5 h-1.5 bg-blue-500 rounded-full animate-pulse"></div>
-                    <span className="text-blue-500 text-[10px] font-black uppercase tracking-widest">{t('active')}</span>
-                  </div>
-                </div>
-                
-                <div className="text-center mb-4">
-                  <div className="text-[#8E8E93] text-[9px] font-semibold uppercase tracking-wider mb-1">{t('mined_axn')}</div>
-                  <div className="text-3xl font-black text-white tabular-nums tracking-tight">
-                    {miningAmount.toFixed(6)}
-                  </div>
-                  <div className="flex items-center justify-center gap-1 mt-1 text-blue-500 text-[11px] font-bold">
-                    <Zap className="w-3 h-3 fill-current" />
-                    {miningRatePerHour.toFixed(4)} H/h
-                  </div>
-                </div>
-
-                {activeBoosts.length > 0 && (
-                  <div className="mb-4 space-y-2 max-h-[150px] overflow-y-auto pr-1 custom-scrollbar">
-                    <div className="flex items-center gap-2 mb-2">
-                      <Clock className="w-3 h-3 text-[#8E8E93]" />
-                      <span className="text-[#8E8E93] text-[9px] font-black uppercase tracking-widest">Active Boosters</span>
-                    </div>
-                    <div className="grid grid-cols-1 gap-2">
-                      {activeBoosts.map((boost: any) => (
-                        <div key={boost.id} className="bg-white/5 rounded-xl p-3 border border-white/5 flex justify-between items-center">
-                          <div className="space-y-0.5 text-left">
-                            <div className="text-white text-[10px] font-black uppercase tracking-tight">Mining Boost</div>
-                            <div className="text-white text-[9px] font-bold">+{boost.miningRate} AXN/h</div>
-                          </div>
-                          <div className="text-right">
-                            <div className="text-[#8E8E93] text-[8px] font-black uppercase tracking-widest">Expires In</div>
-                            <div className="text-white text-[10px] font-bold tabular-nums">
-                              {formatRemainingTime(boost.remainingTime)}
-                            </div>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                )}
-
-                <div className="grid grid-cols-1 gap-3 mb-4">
-                  <Button 
-                    onClick={handleClaimClick}
-                    disabled={claimMiningMutation.isPending}
-                    className={`${
-                      miningAmount >= 1 
-                        ? "bg-blue-600 hover:bg-blue-700 text-white" 
-                        : "bg-[#1a1a1a] hover:bg-[#222] text-white border border-white/5"
-                    } rounded-xl py-2.5 text-xs font-bold h-auto uppercase tracking-wider flex items-center justify-center gap-2 transition-all shadow-lg shadow-white/5`}
-                  >
-                    {claimMiningMutation.isPending ? <Loader2 className="w-3 h-3 animate-spin" /> : (
-                      <>
-                        <HandCoins className="w-3.5 h-3.5" />
-                        {t('claim')}
-                      </>
-                    )}
-                  </Button>
-                </div>
-
-                <div className="grid grid-cols-2 gap-3 pt-4 border-t border-white/5">
-                  <Button
-                    onClick={handleConvertClick}
-                    className="w-full h-11 bg-white hover:bg-zinc-200 text-black rounded-xl font-black text-xs uppercase tracking-widest transition-all shadow-lg shadow-white/5"
-                  >
-                    <RefreshCw className="w-4 h-4" />
-                    {t('convert')}
-                  </Button>
-                  <Button
-                    onClick={() => setPromoPopupOpen(true)}
-                    className="w-full h-11 bg-white hover:bg-zinc-200 text-black rounded-xl font-black text-xs uppercase tracking-widest transition-all shadow-lg shadow-white/5"
-                  >
-                    <Ticket className="w-4 h-4" />
-                    {t('promo')}
-                  </Button>
-                </div>
-              </div>
-            </TabsContent>
-
 
             <TabsContent value="referrals" className="mt-0 outline-none">
               <div className="flex flex-col items-center text-center pt-2">
@@ -1466,9 +1314,6 @@ export default function Home() {
                     </p>
                   </div>
                 )}
-              </div>
-              <div className="-mt-6">
-                {referralTasksSection}
               </div>
             </TabsContent>
           </Tabs>
