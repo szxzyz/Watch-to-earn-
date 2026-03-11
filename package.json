@@ -5,10 +5,10 @@
   "license": "MIT",
   "scripts": {
     "dev": "NODE_ENV=development tsx server/index.ts",
-    "build": "vite build && esbuild server/index.ts --platform=node --packages=external --bundle --format=esm --outdir=dist --external:vite --external:node-telegram-bot-api --alias:@shared=./shared",
+    "build": "NODE_TLS_REJECT_UNAUTHORIZED=0 vite build && NODE_TLS_REJECT_UNAUTHORIZED=0 esbuild server/index.ts --platform=node --packages=external --bundle --format=esm --outdir=dist --external:vite --external:node-telegram-bot-api --alias:@shared=./shared",
     "start": "NODE_TLS_REJECT_UNAUTHORIZED=0 NODE_ENV=production node dist/index.js",
     "db:push": "NODE_TLS_REJECT_UNAUTHORIZED=0 drizzle-kit push",
-    "migrate": "drizzle-kit migrate",
+    "migrate": "NODE_TLS_REJECT_UNAUTHORIZED=0 drizzle-kit migrate",
     "fix-referrals": "node fix-referral-data-production.js"
   },
   "dependencies": {
