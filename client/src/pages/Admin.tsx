@@ -1442,7 +1442,7 @@ function SettingsSection() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const [isSaving, setIsSaving] = useState(false);
-  const [activeCategory, setActiveCategory] = useState<SettingsCategory>('ads');
+  const [activeCategory, setActiveCategory] = useState<SettingsCategory>('mining');
   
   const { data: settingsData, isLoading } = useQuery({
     queryKey: ["/api/admin/settings"],
@@ -1485,6 +1485,10 @@ function SettingsSection() {
     minimumConvertPadToBug: '1000',
     bugPerUsd: '10000',
     withdrawalBugRequirementEnabled: true,
+    ad_section1_reward: '0.0015',
+    ad_section1_limit: '250',
+    ad_section2_reward: '0.0001',
+    ad_section2_limit: '250'
   });
   
   useEffect(() => {
@@ -1525,12 +1529,16 @@ function SettingsSection() {
         minimumConvertPadToBug: settingsData.minimumConvertPadToBug?.toString() || '1000',
         bugPerUsd: settingsData.bugPerUsd?.toString() || '10000',
         withdrawalBugRequirementEnabled: settingsData.withdrawalBugRequirementEnabled !== false,
+        ad_section1_reward: settingsData.ad_section1_reward?.toString() || '0.0015',
+        ad_section1_limit: settingsData.ad_section1_limit?.toString() || '250',
+        ad_section2_reward: settingsData.ad_section2_reward?.toString() || '0.0001',
+        ad_section2_limit: settingsData.ad_section2_limit?.toString() || '250'
       });
     }
   }, [settingsData]);
   
   const categories = [
-    { id: 'ads' as const, label: 'Ads', icon: 'play' },
+    { id: 'mining' as const, label: 'Mining Boosts', icon: 'bolt' },
     { id: 'affiliates' as const, label: 'Affiliates', icon: 'users' },
     { id: 'withdrawals' as const, label: 'Withdrawals', icon: 'wallet' },
     { id: 'tasks' as const, label: 'Tasks', icon: 'tasks' },
@@ -1591,6 +1599,10 @@ function SettingsSection() {
         minimumConvertPadToBug: settings.minimumConvertPadToBug?.toString() || '1000',
         bugPerUsd: settings.bugPerUsd?.toString() || '10000',
         withdrawalBugRequirementEnabled: !!settings.withdrawalBugRequirementEnabled,
+        ad_section1_reward: settings.ad_section1_reward?.toString() || '0.0015',
+        ad_section1_limit: settings.ad_section1_limit?.toString() || '250',
+        ad_section2_reward: settings.ad_section2_reward?.toString() || '0.0001',
+        ad_section2_limit: settings.ad_section2_limit?.toString() || '250',
       };
 
       const res = await apiRequest("PUT", "/api/admin/settings", payload);
@@ -1646,6 +1658,66 @@ function SettingsSection() {
       </div>
 
       <div className="space-y-3">
+        {activeCategory === 'mining' && (
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+            <div className="space-y-2">
+              <Label htmlFor="ad_section1_reward" className="text-sm font-semibold">
+                <i className="fas fa-bolt mr-2 text-amber-500"></i>
+                Booster 1 Reward (+/hour)
+              </Label>
+              <Input
+                id="ad_section1_reward"
+                type="number"
+                step="0.0001"
+                value={settings.ad_section1_reward as string}
+                onChange={(e) => setSettings({ ...settings, ad_section1_reward: e.target.value })}
+                placeholder="0.0015"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="ad_section1_limit" className="text-sm font-semibold">
+                <i className="fas fa-list-ol mr-2 text-amber-500"></i>
+                Booster 1 Daily Limit (Ads)
+              </Label>
+              <Input
+                id="ad_section1_limit"
+                type="number"
+                value={settings.ad_section1_limit as string}
+                onChange={(e) => setSettings({ ...settings, ad_section1_limit: e.target.value })}
+                placeholder="250"
+              />
+            </div>
+            <div className="space-y-2 border-t pt-3 mt-1 md:col-span-2"></div>
+            <div className="space-y-2">
+              <Label htmlFor="ad_section2_reward" className="text-sm font-semibold">
+                <i className="fas fa-bolt mr-2 text-purple-500"></i>
+                Booster 2 Reward (+/hour)
+              </Label>
+              <Input
+                id="ad_section2_reward"
+                type="number"
+                step="0.0001"
+                value={settings.ad_section2_reward as string}
+                onChange={(e) => setSettings({ ...settings, ad_section2_reward: e.target.value })}
+                placeholder="0.0001"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="ad_section2_limit" className="text-sm font-semibold">
+                <i className="fas fa-list-ol mr-2 text-purple-500"></i>
+                Booster 2 Daily Limit (Ads)
+              </Label>
+              <Input
+                id="ad_section2_limit"
+                type="number"
+                value={settings.ad_section2_limit as string}
+                onChange={(e) => setSettings({ ...settings, ad_section2_limit: e.target.value })}
+                placeholder="250"
+              />
+            </div>
+          </div>
+        )}
+
         {activeCategory === 'affiliates' && (
           <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
             <div className="space-y-2">
