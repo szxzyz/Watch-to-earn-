@@ -12,7 +12,7 @@ services:
     runtime: node
     plan: starter
     region: oregon
-    buildCommand: NODE_TLS_REJECT_UNAUTHORIZED=0 npm ci && NODE_TLS_REJECT_UNAUTHORIZED=0 npm run build
+    buildCommand: npm ci && npm run build
     startCommand: npm start
     envVars:
       - key: NODE_ENV
