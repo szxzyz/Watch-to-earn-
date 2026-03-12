@@ -11,7 +11,7 @@ CashWatch is a Telegram-based earning platform where users mine Satoshi (SAT) by
 
 ### UI/UX Decisions
 - **Iconography**: Uses `lucide-react` for a professional icon set.
-- **Navigation**: Features a 5-item bottom navigation bar: Store, Task, Home, Affiliates, Withdraw.
+- **Navigation**: 2-item bottom nav (Home, Profile). Invite Friends accessible via the UserPlus button in the top-right header.
 - **Component Design**: Leverages shadcn/ui and Tailwind CSS for consistent styling, including gradient effects for toggles.
 - **Input Handling**: Supports decimal inputs for financial transactions with 2-decimal display formatting.
 - **Validation**: Provides real-time client-side validation and clear error messages.
@@ -21,6 +21,7 @@ CashWatch is a Telegram-based earning platform where users mine Satoshi (SAT) by
 - **Stack**: React, TypeScript, Vite (frontend); Express.js, Node.js (backend); PostgreSQL with Drizzle ORM (database).
 - **Authentication**: Telegram WebApp Authentication.
 - **SAT Mining**: Users mine Satoshi (SAT) directly. The `balance` DB field stores SAT. No AXN/TON conversion exists.
+- **Referral Mining Boost System**: Each active referral adds +0.1/h to the inviter's mining speed. Stored in `referral_mining_boost` (per-hour value) on the users table. Boosts are auto-removed if the friend leaves the required channel/group, and auto-restored when they rejoin. Referrer receives Telegram notifications on changes. Invite popup accessible via header button.
 - **Withdrawal System**: Direct SAT withdrawals to Bitcoin, Lightning Network, or FaucetPay. Minimum 100 SAT, 0% fee. Balance deducted from `balance` field on admin approval. Admin can approve/reject with automatic balance deduction/refund.
 - **ArcPay Integration**: Full integration for PDZ top-ups, including secure API credential handling, retry logic, and a webhook for payment notifications.
 - **Earning Mechanics**: Includes Faucetpay (+1 Hrum), Referral System, and Ad Rewards, all managed as Hrum integers.
