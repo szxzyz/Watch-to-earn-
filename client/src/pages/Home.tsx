@@ -187,7 +187,7 @@ export default function Home() {
     onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ["/api/auth/user"] });
       queryClient.invalidateQueries({ queryKey: ["/api/mining/state"] });
-      showNotification(`+${Number(parseFloat(data.amount).toFixed(2)).toString()} AXN claimed from mining!`, "success");
+      showNotification(`+${Math.floor(parseFloat(data.amount)).toLocaleString()} SAT claimed from mining!`, "success");
     },
     onError: (error: any) => {
       showNotification(error.message, "error");
@@ -314,8 +314,8 @@ export default function Home() {
       queryClient.invalidateQueries({ queryKey: ["/api/user/stats"] });
       const rewardAmount = parseFloat(data.rewardEarned || '0');
       if (rewardAmount > 0) {
-        const earnedAXN = Math.round(rewardAmount);
-        showNotification(`You've claimed +${earnedAXN} AXN!`, "success");
+        const earnedSAT = Math.round(rewardAmount);
+        showNotification(`You've claimed +${earnedSAT.toLocaleString()} SAT!`, "success");
       } else {
         showNotification("You've claimed your streak bonus!", "success");
       }
@@ -429,8 +429,8 @@ export default function Home() {
       // Background refetch to keep data in sync
       queryClient.invalidateQueries({ queryKey: ['/api/auth/user'] });
       queryClient.invalidateQueries({ queryKey: ['/api/tasks/home/unified'] });
-      const axnReward = Number(data.reward ?? 0);
-      showNotification(`+${axnReward.toLocaleString()} AXN earned!`, 'success');
+      const satReward = Number(data.reward ?? 0);
+      showNotification(`+${satReward.toLocaleString()} SAT earned!`, 'success');
     },
     onError: (error: any) => {
       showNotification(error.message || 'Failed to claim reward', 'error');
@@ -610,7 +610,7 @@ export default function Home() {
       queryClient.invalidateQueries({ queryKey: ["/api/user/stats"] });
       queryClient.invalidateQueries({ queryKey: ["/api/earnings"] });
       
-      showNotification(`You received ${Math.round(data.rewardAXN || 1000)} AXN on your balance`, "success");
+      showNotification(`You received ${Math.round(data.rewardAXN || 1000).toLocaleString()} SAT on your balance`, "success");
       setLoadingProvider(null);
     },
     onError: (error: any) => {
@@ -806,8 +806,8 @@ export default function Home() {
     setConvertPopupOpen(true);
   };
 
-  const tonBalance = parseFloat((user as User)?.tonBalance || "0");
-  const withdrawBalance = parseFloat((user as User)?.tonBalance || "0");
+  const satBalance = Math.floor(parseFloat((user as User)?.balance || "0"));
+  const withdrawBalance = satBalance;
   
   const displayName = (window as any).Telegram?.WebApp?.initDataUnsafe?.user?.first_name || (user as User)?.firstName || (user as User)?.username || "User";
   const photoUrl = typeof window !== 'undefined' && (window as any).Telegram?.WebApp?.initDataUnsafe?.user?.photo_url;
@@ -987,7 +987,7 @@ export default function Home() {
         extraAdsWatchedToday: data.extraAdsWatchedToday
       }));
       
-      showNotification(`You received ${data.rewardAXN} AXN for Extra Earn!`, "success");
+      showNotification(`You received ${data.rewardAXN} SAT for Extra Earn!`, "success");
     } catch (error: any) {
       console.error('Extra earn error:', error);
       showNotification(error.message || "Extra Earn ad failed", "error");
@@ -1119,7 +1119,7 @@ export default function Home() {
 
   const handleClaimClick = () => {
     if (miningAmount < 1) {
-      showNotification("Minimum claim is 1 AXN", "error");
+      showNotification("Minimum claim is 1 SAT", "error");
       return;
     }
     claimMiningMutation.mutate();
@@ -1165,28 +1165,24 @@ export default function Home() {
 
           <div className="bg-[#141414] rounded-2xl px-4 py-2 flex justify-between items-center mb-4 border border-white/5 h-12">
             <div className="flex flex-col items-center flex-1">
-              <span className="text-[#8E8E93] text-[9px] font-semibold uppercase tracking-wider mb-0.5">{t('total_axn_mined')}</span>
+              <span className="text-[#8E8E93] text-[9px] font-semibold uppercase tracking-wider mb-0.5">Total SAT Mined</span>
               <div className="flex items-center gap-1.5 leading-none">
-                <div className="w-4 h-4 flex items-center justify-center flex-shrink-0">
-                  <img src="/images/axn-logo.jpg" alt="AXN" className="w-full h-full object-cover rounded-sm" />
-                </div>
+                <span className="text-[#F5C542] text-base font-black">₿</span>
                 <span className="text-white text-base font-black tabular-nums">
                   {Math.floor(parseFloat(user?.balance || "0")).toLocaleString()}
                 </span>
+                <span className="text-[#F5C542] text-[10px] font-bold">SAT</span>
               </div>
             </div>
             <div className="w-[1px] h-6 bg-white/10 mx-1"></div>
             <div className="flex flex-col items-center flex-1">
-              <div className="flex items-center gap-1 mb-0.5 leading-none">
-                <span className="text-[#8E8E93] text-[9px] font-semibold uppercase tracking-wider">{t('total_ton_earned')}</span>
-              </div>
+              <span className="text-[#8E8E93] text-[9px] font-semibold uppercase tracking-wider mb-0.5">Mining Rate</span>
               <div className="flex items-center gap-1.5 leading-none">
-                <div className="w-4 h-4 flex items-center justify-center flex-shrink-0">
-                  <img src="/images/ton.png" alt="TON" className="w-full h-full object-cover rounded-full" />
-                </div>
+                <Zap className="w-3 h-3 text-blue-400" />
                 <span className="text-white text-base font-black tabular-nums">
-                  {user?.tonBalance ? parseFloat(user.tonBalance).toFixed(3) : "0.000"}
+                  {miningRatePerHour.toFixed(4)}
                 </span>
+                <span className="text-[#8E8E93] text-[10px] font-bold">SAT/h</span>
               </div>
             </div>
           </div>
@@ -1227,13 +1223,13 @@ export default function Home() {
                 </div>
                 
                 <div className="text-center mb-4">
-                  <div className="text-[#8E8E93] text-[9px] font-semibold uppercase tracking-wider mb-1">{t('mined_axn')}</div>
+                  <div className="text-[#8E8E93] text-[9px] font-semibold uppercase tracking-wider mb-1">Mined SAT</div>
                   <div className="text-3xl font-black text-white tabular-nums tracking-tight">
-                    {miningAmount.toFixed(6)}
+                    {miningAmount.toFixed(6)} <span className="text-[#F5C542] text-xl">SAT</span>
                   </div>
                   <div className="flex items-center justify-center gap-1 mt-1 text-blue-500 text-[11px] font-bold">
                     <Zap className="w-3 h-3 fill-current" />
-                    {miningRatePerHour.toFixed(4)} H/h
+                    {miningRatePerHour.toFixed(4)} SAT/h
                   </div>
                 </div>
 
@@ -1248,7 +1244,7 @@ export default function Home() {
                         <div key={boost.id} className="bg-white/5 rounded-xl p-3 border border-white/5 flex justify-between items-center">
                           <div className="space-y-0.5 text-left">
                             <div className="text-white text-[10px] font-black uppercase tracking-tight">Mining Boost</div>
-                            <div className="text-white text-[9px] font-bold">+{boost.miningRate} AXN/h</div>
+                            <div className="text-white text-[9px] font-bold">+{boost.miningRate} SAT/h</div>
                           </div>
                           <div className="text-right">
                             <div className="text-[#8E8E93] text-[8px] font-black uppercase tracking-widest">Expires In</div>
@@ -1283,11 +1279,11 @@ export default function Home() {
 
                 <div className="grid grid-cols-2 gap-3 pt-4 border-t border-white/5">
                   <Button
-                    onClick={handleConvertClick}
-                    className="w-full h-11 bg-white hover:bg-zinc-200 text-black rounded-xl font-black text-xs uppercase tracking-widest transition-all shadow-lg shadow-white/5"
+                    onClick={() => setWithdrawPopupOpen(true)}
+                    className="w-full h-11 bg-[#F5C542] hover:bg-yellow-400 text-black rounded-xl font-black text-xs uppercase tracking-widest transition-all shadow-lg shadow-yellow-500/20"
                   >
-                    <RefreshCw className="w-4 h-4" />
-                    {t('convert')}
+                    <Download className="w-4 h-4" />
+                    Withdraw
                   </Button>
                   <Button
                     onClick={() => setPromoPopupOpen(true)}
@@ -1347,7 +1343,7 @@ export default function Home() {
                 {appSettings?.referralRewardEnabled && (
                   <div className="w-full p-3 bg-blue-500/10 border border-blue-500/20 rounded-xl mb-0">
                     <p className="text-[10px] text-blue-400 font-black text-center uppercase tracking-tight italic">
-                      Bonus: {appSettings.referralRewardAXN || 50} AXN + {appSettings.referralReward || 0.0005} TON on first ad!
+                      Bonus: {appSettings.referralRewardAXN || 50} SAT on first ad!
                     </p>
                   </div>
                 )}
@@ -1375,7 +1371,7 @@ export default function Home() {
                     <p className="text-white text-sm font-medium truncate">Share with Friends</p>
                   </div>
                   <div className="text-xs text-gray-400 ml-6">
-                    <p>Reward: <span className="text-white font-medium">{appSettings?.referralRewardAXN || '5'} AXN</span></p>
+                    <p>Reward: <span className="text-white font-medium">{appSettings?.referralRewardAXN || '5'} SAT</span></p>
                   </div>
                 </div>
                 <div className="ml-3 flex-shrink-0">
@@ -1410,7 +1406,7 @@ export default function Home() {
                     <p className="text-white text-sm font-medium truncate">Daily Check-in</p>
                   </div>
                   <div className="text-xs text-gray-400 ml-6">
-                    <p>Reward: <span className="text-white font-medium">{appSettings?.dailyCheckinReward || '5'} AXN</span></p>
+                    <p>Reward: <span className="text-white font-medium">{appSettings?.dailyCheckinReward || '5'} SAT</span></p>
                   </div>
                 </div>
                 <div className="ml-3 flex-shrink-0">
@@ -1451,7 +1447,7 @@ export default function Home() {
                     <p className="text-white text-sm font-medium truncate">Check for Updates</p>
                   </div>
                   <div className="text-xs text-gray-400 ml-6">
-                    <p>Reward: <span className="text-white font-medium">{appSettings?.checkForUpdatesReward || '5'} AXN</span></p>
+                    <p>Reward: <span className="text-white font-medium">{appSettings?.checkForUpdatesReward || '5'} SAT</span></p>
                   </div>
                 </div>
                 <div className="ml-3 flex-shrink-0">
@@ -1560,100 +1556,6 @@ export default function Home() {
         </div>
       )}
 
-      {convertPopupOpen && (
-        <div className="fixed inset-0 bg-black/90 flex items-center justify-center z-[60] px-4 backdrop-blur-sm">
-          <motion.div 
-            initial={{ opacity: 0, scale: 0.9, y: 20 }}
-            animate={{ opacity: 1, scale: 1, y: 0 }}
-            className="bg-[#0d0d0d] rounded-[24px] p-6 w-full max-w-[320px] border border-white/5 relative shadow-2xl overflow-hidden"
-          >
-            <div className="relative z-10 pt-2">
-              <h2 className="text-xl font-black text-white text-center mb-1 uppercase tracking-tight">Exchange AXN for TON</h2>
-              <p className="text-[11px] text-zinc-400 text-center mb-4 font-bold leading-relaxed px-1">
-                Convert your earned AXN into TON cryptocurrency instantly.
-              </p>
-
-              <div className="space-y-3">
-                <div className="space-y-1.5">
-                  <Label className="text-[10px] font-black text-zinc-500 uppercase tracking-widest ml-1">Amount (AXN):</Label>
-                  <div className="relative">
-                    <Input
-                      type="number"
-                      placeholder="0"
-                      value={convertAmount}
-                      onChange={(e) => setConvertAmount(e.target.value)}
-                      className="bg-white/5 border-white/10 h-11 rounded-xl text-white pl-4 pr-10 font-black text-sm focus:ring-blue-500/20 focus:border-blue-500/50 transition-all"
-                    />
-                    <div className="absolute right-3 top-1/2 -translate-y-1/2">
-                      <div className="w-6 h-6 rounded-full overflow-hidden border border-white/10">
-                        <img 
-                          src="/images/axn-logo.jpg" 
-                          alt="AXN" 
-                          className="w-full h-full object-cover scale-150"
-                        />
-                      </div>
-                    </div>
-                  </div>
-                  <div className="flex justify-between items-center px-1">
-                    <span className="text-[9px] font-bold text-zinc-600 uppercase">Bal: {parseFloat((user as User)?.balance || '0').toLocaleString()}</span>
-                    <button 
-                      onClick={() => setConvertAmount((user as User)?.balance || '0')}
-                      className="text-[9px] font-black text-blue-500 uppercase hover:text-blue-400"
-                    >
-                      Max
-                    </button>
-                  </div>
-                </div>
-
-                <div className="space-y-1.5">
-                  <Label className="text-[10px] font-black text-zinc-500 uppercase tracking-widest ml-1">To receive (TON):</Label>
-                  <div className="relative">
-                    <div className="bg-white/5 border border-white/10 text-white h-11 rounded-xl pl-4 pr-10 font-black text-sm flex items-center">
-                      {(Number(convertAmount || 0) / 10000).toFixed(4)}
-                    </div>
-                    <div className="absolute right-3 top-1/2 -translate-y-1/2">
-                      <div className="w-6 h-6 rounded-full overflow-hidden border border-white/10 flex items-center justify-center">
-                        <img 
-                          src="/images/ton.png" 
-                          alt="TON" 
-                          className="w-full h-full object-cover"
-                        />
-                      </div>
-                    </div>
-                  </div>
-                </div>
-
-                <div className="pt-2">
-                  <Button
-                    onClick={() => convertMutation.mutate({ amount: Number(convertAmount), convertTo: 'TON' })}
-                    disabled={convertMutation.isPending || !convertAmount || Number(convertAmount) <= 0}
-                    className="w-full h-11 bg-white hover:bg-zinc-200 text-black rounded-xl font-black text-xs uppercase tracking-widest transition-all shadow-lg shadow-white/5"
-                  >
-                    {convertMutation.isPending ? (
-                      <Loader2 className="w-4 h-4 animate-spin" />
-                    ) : (
-                      "Swap Now"
-                    )}
-                  </Button>
-                </div>
-
-                <div className="pt-3 border-t border-white/5 mt-1">
-                  <p className="text-[9px] text-zinc-500 text-center mb-2 font-black uppercase tracking-wider opacity-60">
-                    Rate: 10,000 AXN = 1 TON
-                  </p>
-                  <Button
-                    variant="outline"
-                    onClick={() => setConvertPopupOpen(false)}
-                    className="w-full h-10 bg-white/5 border-white/10 hover:bg-white/10 text-white rounded-lg font-black text-[10px] uppercase tracking-wider"
-                  >
-                    Close
-                  </Button>
-                </div>
-              </div>
-            </div>
-          </motion.div>
-        </div>
-      )}
 
       {settingsOpen && (
         <SettingsPopup 
