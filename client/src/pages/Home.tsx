@@ -8,8 +8,9 @@ import { useAdmin } from "@/hooks/useAdmin";
 import { useAdFlow } from "@/hooks/useAdFlow";
 import { useLocation } from "wouter";
 import { SettingsPopup } from "@/components/SettingsPopup";
+import InvitePopup from "@/components/InvitePopup";
 import { useLanguage } from "@/hooks/useLanguage";
-import { Award, Wallet, RefreshCw, Flame, Ticket, Info, User as UserIcon, Clock, Loader2, Gift, Rocket, X, Bug, DollarSign, Coins, Send, Users, Check, ExternalLink, Plus, CalendarCheck, Bell, Star, Play, Zap, Settings, Film, Tv, LayoutDashboard, ClipboardList, UserPlus, Share2, Copy, HeartHandshake, HandCoins, LogOut, Download, ShieldCheck } from "lucide-react";
+import { Award, Wallet, RefreshCw, Flame, Ticket, Info, User as UserIcon, Clock, Loader2, Gift, Rocket, X, Bug, DollarSign, Coins, Send, Users, Check, ExternalLink, Plus, CalendarCheck, Bell, Star, Play, Zap, Settings, Film, Tv, LayoutDashboard, ClipboardList, UserPlus, Share2, Copy, HandCoins, LogOut, Download, ShieldCheck } from "lucide-react";
 import { DiamondIcon } from "@/components/DiamondIcon";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -74,6 +75,7 @@ export default function Home() {
   const [convertPopupOpen, setConvertPopupOpen] = useState(false);
   const [boosterPopupOpen, setBoosterPopupOpen] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
+  const [inviteOpen, setInviteOpen] = useState(false);
   const [selectedConvertType, setSelectedConvertType] = useState<'' | 'BUG'>('');
   const [convertAmount, setConvertAmount] = useState<string>("");
   const [completedTasks, setCompletedTasks] = useState<Set<string>>(new Set());
@@ -517,12 +519,6 @@ export default function Home() {
 
   const [loadingProvider, setLoadingProvider] = useState<string | null>(null);
   const [adStartTime, setAdStartTime] = useState<number>(0);
-  const { data: stats } = useQuery<any>({
-    queryKey: ['/api/referrals/stats'],
-    retry: false,
-    staleTime: 60000,
-  });
-
   const botUsername = import.meta.env.VITE_BOT_USERNAME || 'MoneyAXNbot';
   const referralLink = user?.referralCode 
     ? `https://t.me/${botUsername}?start=${user.referralCode}`
@@ -1160,7 +1156,15 @@ export default function Home() {
                 </span>
               </div>
             </div>
-            
+
+            {/* Invite Friends Button */}
+            <button
+              onClick={() => setInviteOpen(true)}
+              className="flex items-center gap-1.5 bg-blue-600/20 border border-blue-500/30 rounded-xl px-3 py-2 hover:bg-blue-600/30 transition-colors"
+            >
+              <UserPlus className="w-4 h-4 text-blue-400" />
+              <span className="text-blue-400 text-xs font-bold">Invite</span>
+            </button>
           </div>
 
           <div className="bg-[#141414] rounded-2xl px-4 py-2 flex justify-between items-center mb-4 border border-white/5 h-12">
@@ -1188,7 +1192,7 @@ export default function Home() {
           </div>
 
           <Tabs defaultValue="mine" className="w-full">
-            <TabsList className="grid w-full grid-cols-3 bg-[#0d0d0d] border border-white/5 h-12 p-1 rounded-xl mb-4 shadow-inner">
+            <TabsList className="grid w-full grid-cols-2 bg-[#0d0d0d] border border-white/5 h-12 p-1 rounded-xl mb-4 shadow-inner">
               <TabsTrigger 
                 value="mine" 
                 className="flex items-center justify-center gap-2 font-black text-[10px] uppercase tracking-wider rounded-lg data-[state=active]:bg-blue-600 data-[state=active]:text-white data-[state=inactive]:text-white/40 transition-all h-full"
@@ -1202,13 +1206,6 @@ export default function Home() {
               >
                 <LayoutDashboard className="w-3.5 h-3.5" />
                 {t('earn').toUpperCase()}
-              </TabsTrigger>
-              <TabsTrigger 
-                value="referrals" 
-                className="flex items-center justify-center gap-2 font-black text-[10px] uppercase tracking-wider rounded-lg data-[state=active]:bg-blue-600 data-[state=active]:text-white data-[state=inactive]:text-white/40 transition-all h-full"
-              >
-                <HeartHandshake className="w-3.5 h-3.5" />
-                {t('referrals').toUpperCase()}
               </TabsTrigger>
             </TabsList>
 
@@ -1303,52 +1300,6 @@ export default function Home() {
               </div>
             </TabsContent>
 
-            <TabsContent value="referrals" className="mt-0 outline-none">
-              <div className="flex flex-col items-center text-center pt-2">
-                <h2 className="text-xl font-bold text-white mb-0.5">{t('invite_friends_earn')}</h2>
-                <p className="text-[11px] text-[#8E8E93] mb-3 max-w-[280px] leading-snug uppercase tracking-wider font-black opacity-80 italic">
-                  Invite friends & get 20% of their earnings instantly.
-                </p>
-
-                <div className="w-full bg-[#111111] rounded-[24px] p-4 mb-3 flex justify-around border border-white/5">
-                  <div>
-                    <p className="text-[10px] text-[#8E8E93] mb-1 uppercase font-bold tracking-wider">{t('user_referred')}</p>
-                    <p className="text-2xl font-black text-white">{stats?.totalInvites || 0}</p>
-                  </div>
-                  <div>
-                    <p className="text-[10px] text-[#8E8E93] mb-1 uppercase font-bold tracking-wider">{t('successful')}</p>
-                    <p className="text-2xl font-black text-white">{stats?.successfulInvites || 0}</p>
-                  </div>
-                </div>
-
-                <div className="grid grid-cols-2 gap-3 w-full mb-2">
-                  <Button
-                    onClick={copyReferralLink}
-                    disabled={!referralLink}
-                    className="bg-white hover:bg-white/90 text-black rounded-2xl py-2.5 text-sm font-black flex items-center justify-center gap-2 border border-white/10 h-auto transition-transform active:scale-95 uppercase tracking-wider"
-                  >
-                    <Copy className="w-3.5 h-3.5 mr-2" />
-                    Copy
-                  </Button>
-                  <Button
-                    onClick={shareReferralLink}
-                    disabled={!referralLink || isSharing}
-                    className="bg-white hover:bg-white/90 text-black rounded-2xl py-2.5 text-sm font-black flex items-center justify-center gap-2 border border-white/10 h-auto transition-transform active:scale-95 uppercase tracking-wider"
-                  >
-                    {isSharing ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Share2 className="w-3.5 h-3.5 mr-2" />}
-                    {isSharing ? 'Sharing...' : 'Invite'}
-                  </Button>
-                </div>
-
-                {appSettings?.referralRewardEnabled && (
-                  <div className="w-full p-3 bg-blue-500/10 border border-blue-500/20 rounded-xl mb-0">
-                    <p className="text-[10px] text-blue-400 font-black text-center uppercase tracking-tight italic">
-                      Bonus: {appSettings.referralRewardAXN || 50} SAT on first ad!
-                    </p>
-                  </div>
-                )}
-              </div>
-            </TabsContent>
           </Tabs>
         </div>
 
@@ -1562,6 +1513,8 @@ export default function Home() {
           onClose={() => setSettingsOpen(false)} 
         />
       )}
+
+      {inviteOpen && <InvitePopup onClose={() => setInviteOpen(false)} />}
 
       <WithdrawalPopup 
         open={withdrawPopupOpen}
