@@ -196,58 +196,45 @@ export default function AdWatchingSection({ user, section = 'section1' }: AdWatc
     : (appSettings?.ad_section2_reward || '0.0001');
 
   return (
-    <div className="bg-[#1a1a1a] border border-blue-500/20 rounded-2xl px-4 h-24 flex items-center shadow-[0_4px_20px_rgba(0,0,0,0.4)] relative overflow-hidden group">
-      {/* Background Glow Effect */}
+    <div className="bg-[#1a1a1a] border border-blue-500/20 rounded-2xl p-3 flex flex-col gap-2.5 shadow-[0_4px_20px_rgba(0,0,0,0.4)] relative overflow-hidden group">
       <div className="absolute -inset-1 bg-gradient-to-r from-blue-500/0 via-blue-500/5 to-blue-500/0 opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
-      
-      <div className="flex items-center justify-between w-full relative z-10">
-        <div className="flex items-center gap-4 flex-1 min-w-0">
-          <div className="w-12 h-12 rounded-xl flex items-center justify-center flex-shrink-0 bg-[#0d0d0d] border border-white/5 overflow-hidden shadow-inner">
-            <img 
-              src="/images/ads_icon.png" 
-              alt="Ads" 
-              className="w-full h-full object-cover opacity-80 group-hover:opacity-100 transition-opacity"
-            />
-          </div>
-          <div className="flex-1 min-w-0">
-            <h3 className="text-white font-black text-[13px] tracking-tight truncate uppercase italic">{section === 'section1' ? 'Speed Booster 1' : 'Speed Booster 2'}</h3>
-            <div className="flex flex-col gap-0.5 mt-0.5">
-              <div className="flex items-center gap-1.5">
-                <div className="w-1.5 h-1.5 rounded-full bg-blue-500 shadow-[0_0_8px_#3b82f6]" />
-                <span className="text-[10px] font-black text-blue-500 uppercase tracking-widest">
-                  +{sectionReward} Mining Speed
-                </span>
-              </div>
-              <div className="flex items-center gap-1.5">
-                <div className="w-1.5 h-1.5 rounded-full bg-blue-400" />
-                <span className="text-[9px] font-bold text-blue-400 uppercase tracking-wider">
-                  Daily Limit: {adsWatchedToday}/{dailyLimit}
-                </span>
-              </div>
-            </div>
-          </div>
+
+      <div className="flex items-center gap-2.5 relative z-10">
+        <div className="w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0 bg-[#0d0d0d] border border-white/5 overflow-hidden shadow-inner">
+          <img
+            src="/images/ads_icon.png"
+            alt="Ads"
+            className="w-full h-full object-cover opacity-80 group-hover:opacity-100 transition-opacity"
+          />
         </div>
-        
-        <div className="flex items-center gap-2 flex-shrink-0">
-          <Button
-            onClick={handleStartEarning}
-            disabled={isShowingAds || adsWatchedToday >= dailyLimit}
-            className="rounded-xl px-6 h-10 font-black text-[11px] uppercase tracking-widest bg-blue-500 text-white hover:bg-blue-600 border-none transition-all active:scale-95 shadow-[0_0_20px_rgba(59,130,246,0.15)]"
-          >
-            {isShowingAds ? (
-              <div className="flex items-center gap-2">
-                <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                <span>{currentAdStep === 'monetag' ? 'Wait' : 'Check'}</span>
-              </div>
-            ) : (
-              <span className="flex items-center gap-2">
-                <Play className="w-3.5 h-3.5 fill-current" />
-                Watch
-              </span>
-            )}
-          </Button>
+        <div className="flex-1 min-w-0">
+          <h3 className="text-white font-black text-[11px] tracking-tight truncate uppercase italic leading-none">
+            {section === 'section1' ? 'Speed Booster 1' : 'Speed Booster 2'}
+          </h3>
+          <div className="flex items-center gap-2 mt-1">
+            <span className="text-blue-400 text-[11px] font-black tabular-nums">+{sectionReward}/h</span>
+            <span className="text-[#8E8E93] text-[9px] font-bold uppercase tracking-wider">AD ({adsWatchedToday}/{dailyLimit})</span>
+          </div>
         </div>
       </div>
+
+      <Button
+        onClick={handleStartEarning}
+        disabled={isShowingAds || adsWatchedToday >= dailyLimit}
+        className="relative z-10 w-full rounded-xl h-9 font-black text-[11px] uppercase tracking-widest bg-blue-500 text-white hover:bg-blue-600 border-none transition-all active:scale-95 shadow-[0_0_20px_rgba(59,130,246,0.15)]"
+      >
+        {isShowingAds ? (
+          <div className="flex items-center gap-2">
+            <Loader2 className="w-3.5 h-3.5 animate-spin" />
+            <span>{currentAdStep === 'monetag' ? 'Wait' : 'Check'}</span>
+          </div>
+        ) : (
+          <span className="flex items-center gap-1.5">
+            <Play className="w-3 h-3 fill-current" />
+            Claim
+          </span>
+        )}
+      </Button>
     </div>
   );
 }
