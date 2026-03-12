@@ -109,6 +109,7 @@ export const users = pgTable("users", {
   // Mining fields
   lastMiningClaim: timestamp("last_mining_claim").defaultNow(),
   miningRate: decimal("mining_rate", { precision: 20, scale: 8 }).default("0.00001"), // AXN per second
+  referralMiningBoost: decimal("referral_mining_boost", { precision: 20, scale: 8 }).default("0"), // Extra mining rate from active referrals (0.1/h per active friend)
   activePlanId: varchar("active_plan_id"),
   planExpiresAt: timestamp("plan_expires_at"),
   createdAt: timestamp("created_at").defaultNow(),
