@@ -40,7 +40,7 @@ export const SettingsPopup: React.FC<SettingsPopupProps> = ({ onClose }) => {
           </div>
           <div>
             <h4 className="text-white font-bold mb-1">2. App Usage</h4>
-            <p>Money Adz allows users to earn AXN / BUG tokens through tasks, ads, and activities. Tokens earned in the app do not represent real money unless withdrawn according to app rules.</p>
+            <p>Money Adz allows users to earn SAT (Satoshi) through tasks, ads, and activities. SAT earned in the app can be withdrawn to Bitcoin/Lightning/FaucetPay wallets according to app rules.</p>
           </div>
           <div>
             <h4 className="text-white font-bold mb-1">3. Rewards & Withdrawals</h4>
