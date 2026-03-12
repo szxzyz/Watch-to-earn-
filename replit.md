@@ -1,7 +1,7 @@
-# CashWatch - Hrum Earning & Withdrawal Platform
+# CashWatch - SAT Mining & Withdrawal Platform
 
 ## Overview
-CashWatch is a Telegram-based earning platform where users earn Hrum currency by watching ads, completing tasks, and referring others. It enables conversion of Hrum to  and offers multi-payment withdrawals. The platform also supports direct PDZ token top-ups via ArcPay, aiming to provide a seamless experience for digital currency management within Telegram. The project's vision is to become a leading platform for micro-tasking and digital currency earning within the Telegram ecosystem, targeting a broad user base interested in supplementary income.
+CashWatch is a Telegram-based earning platform where users mine Satoshi (SAT) by watching ads, completing tasks, and referring others. Users withdraw SAT directly to Bitcoin, Lightning Network, or FaucetPay wallets — no conversion step required. The platform targets a broad Telegram user base interested in Bitcoin micro-earning.
 
 ## User Preferences
 - Task type icons should be small and compact (w-4 h-4 with p-2.5 padding)
@@ -20,8 +20,8 @@ CashWatch is a Telegram-based earning platform where users earn Hrum currency by
 ### Technical Implementations
 - **Stack**: React, TypeScript, Vite (frontend); Express.js, Node.js (backend); PostgreSQL with Drizzle ORM (database).
 - **Authentication**: Telegram WebApp Authentication.
-- **Currency Conversion**: API endpoint for Hrum to  conversion (10,000 Hrum = 1 ).
-- **Withdrawal System**: Supports  blockchain only with package-based withdrawals. Users select from preset packages (0.20, TON0.40, TON0.80) or FULL balance withdrawal. Each package requires proportional BUG balance (calculated via `bugPerUsd` multiplier). Both  and BUG are deducted on successful withdrawal. 5% fee with server-enforced minimums. Fee (5000 Hrum) for changing existing  wallet details.
+- **SAT Mining**: Users mine Satoshi (SAT) directly. The `balance` DB field stores SAT. No AXN/TON conversion exists.
+- **Withdrawal System**: Direct SAT withdrawals to Bitcoin, Lightning Network, or FaucetPay. Minimum 100 SAT, 0% fee. Balance deducted from `balance` field on admin approval. Admin can approve/reject with automatic balance deduction/refund.
 - **ArcPay Integration**: Full integration for PDZ top-ups, including secure API credential handling, retry logic, and a webhook for payment notifications.
 - **Earning Mechanics**: Includes Faucetpay (+1 Hrum), Referral System, and Ad Rewards, all managed as Hrum integers.
 - **Number Formatting**: Uses compact notation (1k, 1M) for large Hrum amounts.
