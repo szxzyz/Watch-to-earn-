@@ -3378,10 +3378,14 @@ export class DatabaseStorage implements IStorage {
       
       console.log(`🔄 Resetting ${usersNeedingReset.length} users for ${currentDateString}`);
       
-      // Reset all users' daily counters
+      // Reset all users' daily counters and ad watch boosts
       await db.update(users)
         .set({ 
           adsWatchedToday: 0,
+          adSection1Boost: "0",
+          adSection2Boost: "0",
+          adSection1Count: 0,
+          adSection2Count: 0,
           lastResetDate: currentDate,
           updatedAt: new Date(),
         })

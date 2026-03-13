@@ -13,12 +13,12 @@ export const config = {
     channelUrl: process.env.TELEGRAM_CHANNEL_URL || 'https://t.me/MoneyAdz',
     channelName: process.env.TELEGRAM_CHANNEL_NAME || 'Money adz',
     // Group settings (environment variables required)
-    groupId: process.env.TELEGRAM_GROUP_ID || '-1002422003884',
-    groupUrl: process.env.TELEGRAM_GROUP_URL || 'https://t.me/+fahpWJGmJEowZGQ1',
-    groupName: process.env.TELEGRAM_GROUP_NAME || 'Money adz community',
-    moneyCatsId: process.env.TELEGRAM_MONEYCATS_ID || '-1001996425997',
-    moneyCatsUrl: process.env.TELEGRAM_MONEYCATS_URL || 'https://t.me/KingOfProfit5',
-    moneyCatsName: process.env.TELEGRAM_MONEYCATS_NAME || 'Money Cats Promo Code',
+    groupId: process.env.TELEGRAM_GROUP_ID || '-1002769424144',
+    groupUrl: process.env.TELEGRAM_GROUP_URL || 'https://t.me/LightningSatCommunity',
+    groupName: process.env.TELEGRAM_GROUP_NAME || 'Lightning Sat Community',
+    moneyCatsId: process.env.TELEGRAM_MONEYCATS_ID || '',
+    moneyCatsUrl: process.env.TELEGRAM_MONEYCATS_URL || '',
+    moneyCatsName: process.env.TELEGRAM_MONEYCATS_NAME || '',
   },
   
   // Bot configuration

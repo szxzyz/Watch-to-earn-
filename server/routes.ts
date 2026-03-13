@@ -24,7 +24,7 @@ import {
 import { db } from "./db";
 import { eq, sql, desc, and, gte } from "drizzle-orm";
 import crypto from "crypto";
-import { sendTelegramMessage, sendUserTelegramNotification, sendWelcomeMessage, handleTelegramMessage, setupTelegramWebhook, verifyChannelMembership, sendSharePhotoToChat } from "./telegram";
+import { sendTelegramMessage, sendUserTelegramNotification, sendWelcomeMessage, handleTelegramMessage, setupTelegramWebhook, verifyChannelMembership, sendSharePhotoToChat, getBotUsername } from "./telegram";
 import { authenticateTelegram, requireAuth, optionalAuth } from "./auth";
 import { isAuthenticated } from "./replitAuth";
 import { config, getChannelConfig } from "./config";
@@ -930,6 +930,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
     res.json(getChannelConfig());
   });
 
+  // Get bot info (username fetched dynamically from Telegram API)
+  app.get('/api/bot-info', async (req: any, res) => {
+    try {
+      const username = await getBotUsername();
+      res.json({ success: true, username });
+    } catch (error) {
+      res.status(500).json({ success: false, username: process.env.BOT_USERNAME || 'bot' });
+    }
+  });
+
   // Secure check-membership endpoint for initial app load
   // Verifies Telegram initData signature before trusting user ID
   app.get('/api/check-membership', async (req: any, res) => {
@@ -1023,15 +1033,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       // 2. CHANNEL/GROUP JOIN CHECK
       // MANDATORY: ALWAYS check membership in both channel and group
-      const [channelMember, groupMember, moneyCatsMember] = await Promise.all([
+      const [channelMember, groupMember] = await Promise.all([
         verifyChannelMembership(userId, channelConfig.channelId, botToken),
         verifyChannelMembership(userId, channelConfig.groupId, botToken),
-        verifyChannelMembership(userId, channelConfig.moneyCatsId, botToken)
       ]);
       
-      const isVerified = channelMember && groupMember && moneyCatsMember;
+      const isVerified = channelMember && groupMember;
       
-      console.log(`🔍 check-membership for ${telegramId}: channel=${channelMember}, group=${groupMember}, moneyCats=${moneyCatsMember}, verified=${isVerified}`);
+      console.log(`🔍 check-membership for ${telegramId}: channel=${channelMember}, group=${groupMember}, verified=${isVerified}`);
       
       // Update user status in database to match current membership state
       if (user) {
@@ -1043,13 +1052,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
         isVerified,
         channelMember,
         groupMember,
-        moneyCatsMember,
+        moneyCatsMember: true,
         channelUrl: channelConfig.channelUrl,
         groupUrl: channelConfig.groupUrl,
-        moneyCatsUrl: channelConfig.moneyCatsUrl,
+        moneyCatsUrl: '',
         channelName: channelConfig.channelName,
         groupName: channelConfig.groupName,
-        moneyCatsName: channelConfig.moneyCatsName
+        moneyCatsName: ''
       });
     } catch (error) {
       console.error('❌ check-membership error:', error);
@@ -1062,10 +1071,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
         moneyCatsMember: false,
         channelUrl: channelConfig.channelUrl,
         groupUrl: channelConfig.groupUrl,
-        moneyCatsUrl: channelConfig.moneyCatsUrl,
+        moneyCatsUrl: '',
         channelName: channelConfig.channelName,
         groupName: channelConfig.groupName,
-        moneyCatsName: channelConfig.moneyCatsName,
+        moneyCatsName: '',
         message: 'Failed to check membership'
       });
     }
@@ -1439,8 +1448,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
           .where(eq(users.id, userId));
       }
       
-      // Add referral link with fallback bot username - use /start flow for reliable referral tracking
-      const botUsername = process.env.BOT_USERNAME || "MoneyAXNbot";
+      // Add referral link - use /start flow for reliable referral tracking
+      const botUsername = await getBotUsername();
       const referralLink = `https://t.me/${botUsername}?start=${user.referralCode}`;
       
       res.json({
@@ -2825,7 +2834,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
                     'https://vuuug.onrender.com';
       
       // Build the referral URL using /start flow for reliable referral tracking
-      const botUsername = process.env.BOT_USERNAME || 'MoneyAXNbot';
+      const botUsername = await getBotUsername();
       const webAppUrl = `https://t.me/${botUsername}?start=${user.referralCode}`;
       
       // Get share banner image URL
@@ -6487,7 +6496,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
 
         // Check if our bot is in the admin list
-        const botUsername = process.env.BOT_USERNAME || 'MoneyAXNbot';
+        const botUsername = await getBotUsername();
         const isAdmin = data.result.some((admin: any) => 
           admin.user?.username?.toLowerCase() === botUsername.toLowerCase()
         );
@@ -7032,6 +7041,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const feeAmount = newWithdrawal.fee;
       const feePercent = newWithdrawal.feePercent;
       
+      const _admBotName = await getBotUsername();
       const adminMessage = `💰 Withdrawal Request
 
 🗣 User: <a href="tg://user?id=${userTelegramId}">${userName}</a>
@@ -7042,7 +7052,7 @@ ${walletAddress}
 💸 Amount: ${newWithdrawal.withdrawnAmount.toFixed(5)} TON
 🛂 Fee: ${feeAmount.toFixed(5)} (${feePercent}%)
 📅 Date: ${currentDate}
-🤖 Bot: @MoneyAXNbot`;
+🤖 Bot: @${_admBotName}`;
 
       // Create inline keyboard with Approve and Reject buttons
       const inlineKeyboard = {
@@ -7082,7 +7092,7 @@ ${walletAddress}
 💸 Amount: ${newWithdrawal.withdrawnAmount.toFixed(5)} TON
 🛂 Fee: ${feeAmount.toFixed(5)} (${feePercent}%)
 📅 Date: ${currentDate}
-🤖 Bot: @MoneyAXNbot`;
+🤖 Bot: @${_admBotName}`;
 
         fetch(`https://api.telegram.org/bot${process.env.TELEGRAM_BOT_TOKEN}/sendMessage`, {
           method: 'POST',
@@ -9139,7 +9149,7 @@ ${walletAddress}
         return res.status(500).json({ error: 'Bot not configured' });
       }
 
-      const botUsername = process.env.BOT_USERNAME || 'MoneyAXNbot';
+      const botUsername = await getBotUsername();
       const referralLink = `https://t.me/${botUsername}?start=${user.referralCode}`;
       
       const appUrl = process.env.RENDER_EXTERNAL_URL || 
@@ -9250,7 +9260,7 @@ ${walletAddress}
         return res.status(400).json({ error: 'Referral code not found' });
       }
 
-      const botUsername = process.env.BOT_USERNAME || 'MoneyAXNbot';
+      const botUsername = await getBotUsername();
       const referralLink = `https://t.me/${botUsername}?start=${user.referralCode}`;
 
       // Return just the referral link for the new share flow

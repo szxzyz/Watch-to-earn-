@@ -10,6 +10,44 @@ const isAdmin = (telegramId: string): boolean => {
 const TELEGRAM_BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN;
 const TELEGRAM_ADMIN_ID = process.env.TELEGRAM_ADMIN_ID;
 
+// Cached bot username - fetched once from Telegram API
+let _cachedBotUsername: string | null = null;
+let _botUsernameFetchedAt: number = 0;
+
+export async function getBotUsername(): Promise<string> {
+  const CACHE_TTL_MS = 60 * 60 * 1000; // 1 hour cache
+  const now = Date.now();
+
+  if (_cachedBotUsername && now - _botUsernameFetchedAt < CACHE_TTL_MS) {
+    return _cachedBotUsername;
+  }
+
+  if (!TELEGRAM_BOT_TOKEN) {
+    const fallback = process.env.BOT_USERNAME || process.env.VITE_BOT_USERNAME || 'bot';
+    return fallback;
+  }
+
+  try {
+    const response = await fetch(`https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/getMe`);
+    if (response.ok) {
+      const data = await response.json();
+      if (data.ok && data.result?.username) {
+        _cachedBotUsername = data.result.username;
+        _botUsernameFetchedAt = now;
+        console.log(`✅ Bot username fetched from API: @${_cachedBotUsername}`);
+        return _cachedBotUsername;
+      }
+    }
+  } catch (error) {
+    console.warn('⚠️ Failed to fetch bot username from API:', error);
+  }
+
+  // Fallback to env vars
+  const fallback = process.env.BOT_USERNAME || process.env.VITE_BOT_USERNAME || 'bot';
+  console.warn(`⚠️ Using fallback bot username: ${fallback}`);
+  return fallback;
+}
+
 // State management for admin rejection flow
 const pendingRejections = new Map<string, {
   withdrawalId: string;
@@ -434,6 +472,7 @@ export async function sendWithdrawalRequestNotification(withdrawal: any, user: a
     const userTelegramUsername = user?.username ? `@${user.username}` : 'N/A';
     const currentDate = new Date().toUTCString();
 
+    const _botName = await getBotUsername();
     const message = `💰 <b>Withdrawal Request</b>\n\n` +
                  `🗣 User: ${escapeHtml(userName)}\n` +
                  `🆔 User ID: <code>${userTelegramId}</code>\n` +
@@ -442,7 +481,7 @@ export async function sendWithdrawalRequestNotification(withdrawal: any, user: a
                  `💸 Amount: ${format$(netAmount)} SAT\n` +
                  `🛂 Fee: ${format$(feeAmount)} SAT (${feePercent}%)\n` +
                  `📅 Date: ${currentDate}\n` +
-                 `🤖 Bot: @MoneyHrumbot`;
+                 `🤖 Bot: @${_botName}`;
 
     const replyMarkup = {
       inline_keyboard: [[
@@ -496,6 +535,7 @@ export async function sendWithdrawalApprovedNotification(withdrawal: any): Promi
     const userTelegramUsername = user?.username ? `@${user.username}` : 'N/A';
     const currentDate = new Date().toUTCString();
 
+    const _approvalBotName = await getBotUsername();
     const groupMessage = `✅ Withdrawal Approved
     
 🗣 User: <a href="tg://user?id=${userTelegramId}">${escapeHtml(userName)}</a>
@@ -506,7 +546,7 @@ export async function sendWithdrawalApprovedNotification(withdrawal: any): Promi
 💸 Amount: ${format$(netAmount)} SAT
 🛂 Fee: ${format$(feeAmount)} SAT (${feePercent}%)
 📅 Date: ${currentDate}
-🤖 Bot: @MoneyHrumbot`;
+🤖 Bot: @${_approvalBotName}`;
 
     // Group notification
     const response = await fetch(`https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage`, {
@@ -640,15 +680,19 @@ export async function sendSharePhotoToChat(
   }
 }
 
-export function formatWelcomeMessage(): { message: string; inlineKeyboard: any } {
-  const botUsername = process.env.VITE_BOT_USERNAME || process.env.BOT_USERNAME || 'MoneyHrumbot';
+export async function formatWelcomeMessage(): Promise<{ message: string; inlineKeyboard: any }> {
+  const botUsername = await getBotUsername();
   const channelUrl = 'https://t.me/MoneyAdz';
-  const groupUrl = 'https://t.me/+fahpWJGmJEowZGQ1';
+  const groupUrl = 'https://t.me/LightningSatCommunity';
   
-  const message = `👋 Hey! Welcome, glad to have you here.\n\n` +
-                 `Mine SAT (Satoshi) directly in the app and earn Bitcoin effortlessly.\n\n` +
-                 `Withdraw your SAT directly to Bitcoin, Lightning Network, or FaucetPay.\n\n` +
-                 `Invite your friends and earn 20% of their mining income.`;
+  const message = `🚀 It's Time to Start Mining Sats\n\n` +
+                 `The journey has begun.\n` +
+                 `Who knows how many Satoshis you'll earn, how fast your balance will grow, or who you'll invite along the way?\n\n` +
+                 `One thing is certain: the earning journey has started.\n\n` +
+                 `⚡ Watch ads to boost your speed\n` +
+                 `👥 Invite friends and earn together\n` +
+                 `💰 Collect Sats and withdraw anytime\n\n` +
+                 `Join now and don't miss your chance to start stacking Satoshi.`;
 
   const inlineKeyboard = {
     inline_keyboard: [
@@ -687,7 +731,7 @@ export async function sendWelcomeMessage(userId: string): Promise<boolean> {
     console.error('Error checking ban status for welcome message:', err);
   }
 
-  const { message, inlineKeyboard } = formatWelcomeMessage();
+  const { message, inlineKeyboard } = await formatWelcomeMessage();
   const domain = process.env.REPLIT_DOMAIN || (process.env.REPL_SLUG ? `${process.env.REPL_SLUG}.replit.app` : null);
   const imageUrl = domain ? `https://${domain}/images/welcome-image.jpg` : null;
   
@@ -800,7 +844,7 @@ export async function handleInlineQuery(inlineQuery: any): Promise<boolean> {
     }
 
     // Build the referral link - use /start flow for reliable referral tracking
-    const botUsername = process.env.VITE_BOT_USERNAME || process.env.BOT_USERNAME || 'MoneyHrumbot';
+    const botUsername = await getBotUsername();
     const referralLink = `https://t.me/${botUsername}?start=${user.referralCode}`;
     
     // Get the app URL for the share banner image
@@ -944,7 +988,7 @@ export async function handleTelegramMessage(update: any): Promise<boolean> {
           const user = await storage.getUserByTelegramId(chatId);
           
           if (user && user.referralCode) {
-            const botUsername = process.env.VITE_BOT_USERNAME || 'PaidAdzbot';
+            const botUsername = await getBotUsername();
             const referralLink = `https://t.me/${botUsername}?start=${user.referralCode}`;
             
             const inviteMessage = `👫🏼 <b>Invite Your Friends!</b>
@@ -1219,6 +1263,7 @@ Share your unique referral link and earn Hrum when your friends join:
             const createdAt = new Date(withdrawal.createdAt!).toUTCString();
             
             // Format matches approved message format exactly
+            const _wdBotName = await getBotUsername();
             const message = `💰 Withdrawal Request
 
 🗣 User: <a href="tg://user?id=${userTelegramId}">${userName}</a>
@@ -1229,7 +1274,7 @@ ${walletAddress}
 💸 Amount: ${Math.floor(netAmount)} SAT
 🛂 Fee: ${Math.floor(feeAmount)} SAT (${feePercent}%)
 📅 Date: ${createdAt}
-🤖 Bot: @MoneyAdzbot`;
+🤖 Bot: @${_wdBotName}`;
             
             await fetch(`https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage`, {
               method: 'POST',
@@ -1399,6 +1444,7 @@ ${walletAddress}
             const method = result.withdrawal.method || '';
             const paymentSystemId = withdrawalDetails?.paymentSystemId || '';
             
+            const _sucBotName = await getBotUsername();
             const adminSuccessMessage = `✅ Withdrawal Successful
 
 🗣 User: <a href="tg://user?id=${userTelegramId}">${userName}</a>
@@ -1409,7 +1455,7 @@ ${walletAddress}
 💸 Amount: ${Math.floor(netAmount)} SAT
 🛂 Fee: ${Math.floor(feeAmount)} SAT (${feePercent}%)
 📅 Date: ${currentDate}
-🤖 Bot: @MoneyAdzbot`;
+🤖 Bot: @${_sucBotName}`;
             
             await fetch(`https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/editMessageText`, {
               method: 'POST',
