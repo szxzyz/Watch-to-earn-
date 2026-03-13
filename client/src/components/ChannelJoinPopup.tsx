@@ -133,7 +133,7 @@ export default function ChannelJoinPopup({ telegramId, onVerified }: ChannelJoin
                 <p className={`font-semibold text-sm ${membershipStatus?.channelMember ? "text-white" : "text-white/80"}`}>
                   Join Channel
                 </p>
-                <p className="text-white/30 text-[10px] mt-0.5">{membershipStatus?.channelName || "Official Channel"}</p>
+                <p className="text-white/30 text-[10px] mt-0.5">Channel & Group</p>
               </div>
             </div>
             {membershipStatus?.channelMember ? (
@@ -168,7 +168,7 @@ export default function ChannelJoinPopup({ telegramId, onVerified }: ChannelJoin
                 <p className={`font-semibold text-sm ${membershipStatus?.groupMember ? "text-white" : "text-white/80"}`}>
                   Join Group
                 </p>
-                <p className="text-white/30 text-[10px] mt-0.5">{membershipStatus?.groupName || "Lightning Sat Community"}</p>
+                <p className="text-white/30 text-[10px] mt-0.5">Channel & Group</p>
               </div>
             </div>
             {membershipStatus?.groupMember ? (

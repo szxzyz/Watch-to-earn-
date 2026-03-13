@@ -102,7 +102,7 @@ export default function SeasonEndOverlay({ onClose, isLocked = false }: SeasonEn
 
               {/* Footer Info */}
               <p className="text-gray-500 text-xs mt-4">
-                Need help? Contact us @CashWatchBot
+                Need help? Join our Channel & Group on Telegram
               </p>
             </div>
           </div>
