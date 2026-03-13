@@ -208,12 +208,9 @@ export default function AdWatchingSection({ user, section = 'section1' }: AdWatc
           />
         </div>
         <div className="flex-1 min-w-0">
-          <h3 className="text-white font-black text-[11px] tracking-tight truncate uppercase italic leading-none">
-            {section === 'section1' ? 'Speed Booster 1' : 'Speed Booster 2'}
-          </h3>
-          <div className="flex items-center gap-2 mt-1">
-            <span className="text-blue-400 text-[11px] font-black tabular-nums">+{sectionReward}/h</span>
-            <span className="text-[#8E8E93] text-[9px] font-bold uppercase tracking-wider">AD ({adsWatchedToday}/{dailyLimit})</span>
+          <div className="flex flex-col gap-0.5">
+            <span className="text-blue-400 text-[12px] font-black tabular-nums leading-none">{sectionReward}/h</span>
+            <span className="text-[#8E8E93] text-[9px] font-bold uppercase tracking-wider leading-none">AD ({adsWatchedToday}/{dailyLimit})</span>
           </div>
         </div>
       </div>

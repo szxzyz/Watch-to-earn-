@@ -1,12 +1,12 @@
 import { useState } from "react";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { useMutation, useQueryClient, useQuery } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
 import { showNotification } from "@/components/AppNotification";
-import { Loader2 } from "lucide-react";
+import { Loader2, Download } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { motion, AnimatePresence } from "framer-motion";
 
 interface WithdrawalPopupProps {
   open: boolean;
@@ -30,8 +30,8 @@ export default function WithdrawalPopup({ open, onOpenChange, tonBalance }: With
   });
 
   const satBalance = Math.floor(parseFloat(user?.balance || "0"));
-  const minWithdraw = appSettings?.minimum_withdrawal_sat ? parseFloat(appSettings.minimum_withdrawal_sat) : 100;
-  const networkFee = appSettings?.withdrawal_fee_sat ? parseFloat(appSettings.withdrawal_fee_sat) : 0;
+  const minWithdraw = appSettings?.minimum_withdrawal_sat ? parseFloat(appSettings.minimum_withdrawal_sat) : 20;
+  const networkFee = appSettings?.withdrawal_fee_sat ? parseFloat(appSettings.withdrawal_fee_sat) : 10;
 
   const withdrawMutation = useMutation({
     mutationFn: async () => {
@@ -93,70 +93,103 @@ export default function WithdrawalPopup({ open, onOpenChange, tonBalance }: With
   };
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="bg-black/95 border-white/5 text-white w-full max-w-[340px] rounded-[28px] p-6 shadow-2xl backdrop-blur-sm [&>button]:hidden">
-        <div className="p-0">
-          <div className="flex justify-between items-center mb-6">
-            <h2 className="text-xl font-black text-white uppercase tracking-tight italic">SAT Withdrawal</h2>
-          </div>
+    <AnimatePresence>
+      {open && (
+        <motion.div
+          className="fixed inset-0 z-[200] flex items-end justify-center"
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+        >
+          <div
+            className="absolute inset-0 bg-black/70 backdrop-blur-sm"
+            onClick={() => onOpenChange(false)}
+          />
 
-          <div className="space-y-5">
-            <div className="space-y-2">
-              <div className="flex justify-between">
-                <Label className="text-[#8E8E93] text-[10px] font-black uppercase tracking-widest ml-1">Wallet Address:</Label>
-              </div>
-              <Input 
-                placeholder="Bitcoin / Lightning / FaucetPay address" 
-                value={withdrawAddress}
-                onChange={(e) => setWithdrawAddress(e.target.value)}
-                className="bg-[#1a1a1a] border-white/5 text-white h-12 rounded-xl focus:ring-[#F5C542] font-bold text-sm placeholder:text-[#3a3a3a] placeholder:text-[11px] placeholder:font-medium"
-              />
+          <motion.div
+            className="relative w-full max-w-md bg-[#0f0f0f] border border-white/10 rounded-t-2xl overflow-hidden"
+            initial={{ y: "100%" }}
+            animate={{ y: 0 }}
+            exit={{ y: "100%" }}
+            transition={{ type: "spring", damping: 28, stiffness: 300 }}
+            style={{ maxHeight: "90vh", overflowY: "auto" }}
+          >
+            <div className="flex justify-center pt-3 pb-1">
+              <div className="w-10 h-1 rounded-full bg-white/20" />
             </div>
 
-            <div className="space-y-2">
-              <div className="flex justify-between items-center">
-                <Label className="text-[#8E8E93] text-[10px] font-black uppercase tracking-widest ml-1">Amount (SAT):</Label>
-                <span className="text-[#8E8E93] text-[9px] font-bold uppercase tracking-widest bg-white/5 px-2 py-0.5 rounded-lg">Avail: {satBalance.toLocaleString()} SAT</span>
+            <div className="flex items-center px-5 py-3 border-b border-white/5">
+              <div className="flex items-center gap-2">
+                <Download className="w-5 h-5 text-yellow-400" />
+                <h2 className="text-white font-bold text-base">SAT Withdrawal</h2>
               </div>
-              <div className="relative">
-                <Input 
-                  type="number"
-                  placeholder="0" 
-                  value={withdrawAmount}
-                  onChange={(e) => setWithdrawAmount(e.target.value)}
-                  className="bg-[#1a1a1a] border-white/5 text-white h-12 rounded-xl focus:ring-[#F5C542] font-bold text-sm pr-16 placeholder:text-[#3a3a3a] placeholder:text-[11px] placeholder:font-medium"
+            </div>
+
+            <div className="px-5 py-4 space-y-4">
+              <div className="bg-white/5 rounded-xl px-4 py-3 flex justify-between items-center">
+                <span className="text-white/50 text-xs font-semibold">Available Balance</span>
+                <span className="text-yellow-400 text-sm font-black tabular-nums">
+                  {satBalance.toLocaleString()} SAT
+                </span>
+              </div>
+
+              <div className="space-y-1.5">
+                <Label className="text-white/40 text-[10px] font-black uppercase tracking-widest">
+                  Wallet Address
+                </Label>
+                <Input
+                  placeholder="Bitcoin / Lightning / FaucetPay address"
+                  value={withdrawAddress}
+                  onChange={(e) => setWithdrawAddress(e.target.value)}
+                  className="bg-white/5 border-white/10 text-white h-11 rounded-xl focus:ring-yellow-400/30 font-medium text-sm placeholder:text-white/20 placeholder:text-xs"
                 />
-                <button 
-                  onClick={handleMaxClick}
-                  className="absolute right-2 top-1/2 -translate-y-1/2 px-2.5 py-1 bg-yellow-500/20 hover:bg-yellow-500/30 text-yellow-400 text-[10px] font-black rounded-lg transition-all uppercase"
-                >
-                  Max
-                </button>
               </div>
-            </div>
 
-            <div className="bg-[#141414] rounded-2xl p-5 border border-white/5 space-y-3">
-              <div className="flex justify-between items-center">
-                <span className="text-[#8E8E93] text-[10px] font-black uppercase tracking-widest">To receive:</span>
-                <div className="flex items-center gap-2">
-                  <span className="text-white text-base font-black tabular-nums">{parseInt(toReceive).toLocaleString()} SAT</span>
-                  <span className="text-[#F5C542] text-lg">₿</span>
+              <div className="space-y-1.5">
+                <Label className="text-white/40 text-[10px] font-black uppercase tracking-widest">
+                  Amount (SAT)
+                </Label>
+                <div className="relative">
+                  <Input
+                    type="number"
+                    placeholder="0"
+                    value={withdrawAmount}
+                    onChange={(e) => setWithdrawAmount(e.target.value)}
+                    className="bg-white/5 border-white/10 text-white h-11 rounded-xl font-bold text-sm pr-16 placeholder:text-white/20"
+                  />
+                  <button
+                    onClick={handleMaxClick}
+                    className="absolute right-2 top-1/2 -translate-y-1/2 px-2.5 py-1 bg-yellow-500/20 hover:bg-yellow-500/30 text-yellow-400 text-[10px] font-black rounded-lg transition-all uppercase"
+                  >
+                    Max
+                  </button>
                 </div>
               </div>
-              {networkFee > 0 && (
-                <>
-                  <div className="h-[1px] bg-white/5" />
-                  <div className="flex justify-between items-center text-[#8E8E93]">
-                    <span className="text-[10px] font-black uppercase tracking-widest">Network fee</span>
-                    <span className="text-white text-xs font-black">{networkFee} SAT</span>
-                  </div>
-                </>
-              )}
-            </div>
 
-            <div className="space-y-3 pt-1">
-              <Button 
-                className="w-full h-12 bg-[#F5C542] hover:bg-yellow-400 text-black rounded-xl font-black text-[13px] uppercase tracking-widest transition-all shadow-xl border-0 active:scale-[0.98] disabled:opacity-50"
+              <div className="bg-white/5 rounded-xl p-4 space-y-2.5">
+                <div className="flex justify-between items-center">
+                  <span className="text-white/50 text-xs font-semibold">Withdraw Fee</span>
+                  <span className="text-white text-xs font-bold">{networkFee} SAT</span>
+                </div>
+                <div className="h-[1px] bg-white/5" />
+                <div className="flex justify-between items-center">
+                  <span className="text-white/50 text-xs font-semibold">Min. Withdrawal</span>
+                  <span className="text-white text-xs font-bold">{minWithdraw} SAT</span>
+                </div>
+                <div className="h-[1px] bg-white/5" />
+                <div className="flex justify-between items-center">
+                  <span className="text-white/50 text-xs font-semibold">You Receive</span>
+                  <div className="flex items-center gap-1.5">
+                    <span className="text-white text-sm font-black tabular-nums">
+                      {parseInt(toReceive).toLocaleString()} SAT
+                    </span>
+                    <span className="text-yellow-400 text-base">₿</span>
+                  </div>
+                </div>
+              </div>
+
+              <Button
+                className="w-full h-11 bg-yellow-500 hover:bg-yellow-400 text-black rounded-xl font-black text-sm uppercase tracking-widest transition-all active:scale-[0.98] disabled:opacity-50 border-0"
                 onClick={handleWithdrawClick}
                 disabled={withdrawMutation.isPending}
               >
@@ -167,17 +200,18 @@ export default function WithdrawalPopup({ open, onOpenChange, tonBalance }: With
                 )}
               </Button>
 
-              <Button
-                variant="outline"
+              <button
                 onClick={() => onOpenChange(false)}
-                className="w-full h-10 bg-transparent border-white/10 hover:bg-white/5 text-[#8E8E93] rounded-lg font-black text-[10px] uppercase tracking-wider transition-colors"
+                className="w-full text-white/40 text-xs font-bold uppercase tracking-wider py-2 hover:text-white/60 transition-colors"
               >
                 Close
-              </Button>
+              </button>
             </div>
-          </div>
-        </div>
-      </DialogContent>
-    </Dialog>
+
+            <div className="h-4" />
+          </motion.div>
+        </motion.div>
+      )}
+    </AnimatePresence>
   );
 }
