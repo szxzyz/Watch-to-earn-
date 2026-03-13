@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { X, Copy, Share2, Users, Zap, CheckCircle, XCircle, Loader2, UserPlus, AlertTriangle, RotateCcw } from "lucide-react";
+import { Copy, Share2, Users, Zap, CheckCircle, XCircle, Loader2, UserPlus, Link2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { showNotification } from "@/components/AppNotification";
 import { motion, AnimatePresence } from "framer-motion";
@@ -125,50 +125,38 @@ export default function InvitePopup({ onClose }: InvitePopupProps) {
           </div>
 
           {/* Header */}
-          <div className="flex items-center justify-between px-5 py-3 border-b border-white/5">
+          <div className="flex items-center px-5 py-3 border-b border-white/5">
             <div className="flex items-center gap-2">
               <UserPlus className="w-5 h-5 text-blue-400" />
               <h2 className="text-white font-bold text-base">Invite Friends</h2>
             </div>
-            <button
-              onClick={onClose}
-              className="w-7 h-7 flex items-center justify-center rounded-full bg-white/10 text-white/60 hover:text-white hover:bg-white/20 transition-colors"
-            >
-              <X className="w-4 h-4" />
-            </button>
           </div>
 
           <div className="px-5 py-4 space-y-4">
             {/* How it works */}
-            <div className="bg-blue-500/10 border border-blue-500/20 rounded-xl p-4">
-              <h3 className="text-blue-400 font-bold text-sm mb-2 flex items-center gap-1.5">
-                <Zap className="w-4 h-4" /> How It Works
-              </h3>
-              <ul className="text-white/70 text-xs space-y-1.5 leading-relaxed">
-                <li>• Invite a friend using your unique link.</li>
-                <li>
-                  • When your friend joins and stays in the required channel &
-                  group, your mining speed increases by{" "}
-                  <span className="text-blue-400 font-bold">+0.1/h</span>.
-                </li>
-                <li>
-                  • Base mining speed:{" "}
-                  <span className="text-white font-semibold">0.036/h</span>
-                </li>
-                <li>
-                  • After 1 active friend:{" "}
-                  <span className="text-green-400 font-semibold">0.136/h</span>
-                </li>
-                <li className="text-yellow-400/80 flex items-start gap-1.5">
-                  <AlertTriangle className="w-3.5 h-3.5 flex-shrink-0 mt-0.5" />
-                  If your friend leaves the channel or group, the boost is
-                  removed automatically.
-                </li>
-                <li className="text-green-400/80 flex items-start gap-1.5">
-                  <RotateCcw className="w-3.5 h-3.5 flex-shrink-0 mt-0.5" />
-                  When they rejoin, your boost is automatically restored.
-                </li>
-              </ul>
+            <div className="space-y-2">
+              <p className="text-white/40 text-[10px] font-black uppercase tracking-widest">How It Works</p>
+              <div className="flex items-start gap-3 bg-white/5 rounded-xl p-3">
+                <Link2 className="w-4 h-4 text-blue-400 flex-shrink-0 mt-0.5" />
+                <div>
+                  <p className="text-white text-xs font-bold">Share your link</p>
+                  <p className="text-white/50 text-xs mt-0.5">Send your unique invite link to friends.</p>
+                </div>
+              </div>
+              <div className="flex items-start gap-3 bg-white/5 rounded-xl p-3">
+                <Users className="w-4 h-4 text-blue-400 flex-shrink-0 mt-0.5" />
+                <div>
+                  <p className="text-white text-xs font-bold">Friend joins &amp; stays active</p>
+                  <p className="text-white/50 text-xs mt-0.5">They must join the channel and group to count.</p>
+                </div>
+              </div>
+              <div className="flex items-start gap-3 bg-white/5 rounded-xl p-3">
+                <Zap className="w-4 h-4 text-blue-400 flex-shrink-0 mt-0.5" />
+                <div>
+                  <p className="text-white text-xs font-bold">You earn +0.1 SAT/h per friend</p>
+                  <p className="text-white/50 text-xs mt-0.5">More friends = faster mining, up to 100/h Sats.</p>
+                </div>
+              </div>
             </div>
 
             {/* Current boost */}
