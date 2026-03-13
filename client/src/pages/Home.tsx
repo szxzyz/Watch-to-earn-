@@ -22,6 +22,7 @@ import { Label } from "@/components/ui/label";
 import { AnimatePresence, motion } from "framer-motion";
 import WithdrawalPopup from "@/components/WithdrawalPopup";
 import MenuPopup from "@/components/MenuPopup";
+import { SatPriceChart } from "@/components/SatPriceChart";
 
 
 // Unified Task Interface
@@ -1125,7 +1126,7 @@ export default function Home() {
 
   return (
     <Layout>
-      <main className="max-w-md mx-auto px-4 pt-4 pb-0">
+      <main className="max-w-md mx-auto px-4 pt-8 pb-0">
         {/* Unified Profile & Balance Section */}
         <div className="mb-4 relative">
           <div className="flex justify-between items-center mb-4">
@@ -1190,6 +1191,8 @@ export default function Home() {
               </div>
             </div>
           </div>
+
+          <SatPriceChart />
 
           <div className="w-full">
               <div className="bg-[#141414] rounded-2xl p-4 border border-white/5 mb-4">
