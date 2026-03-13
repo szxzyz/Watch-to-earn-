@@ -132,9 +132,12 @@ export default function WithdrawalPopup({ open, onOpenChange, tonBalance }: With
             <div className="px-5 py-4 space-y-4">
               <div className="bg-white/5 rounded-xl px-4 py-3 flex justify-between items-center">
                 <span className="text-white/50 text-xs font-semibold">Available Balance</span>
-                <span className="text-yellow-400 text-sm font-black tabular-nums">
-                  {satBalance.toLocaleString()} SAT
-                </span>
+                <div className="flex items-center gap-1.5">
+                  <img src="/sat-icon.png" alt="SAT" className="w-4 h-4 rounded-full object-cover" />
+                  <span className="text-yellow-400 text-sm font-black tabular-nums">
+                    {satBalance.toLocaleString()} SAT
+                  </span>
+                </div>
               </div>
 
               <div className="space-y-1.5">
@@ -203,7 +206,7 @@ export default function WithdrawalPopup({ open, onOpenChange, tonBalance }: With
                     <span className="text-white text-sm font-black tabular-nums">
                       {parseInt(toReceive).toLocaleString()} SAT
                     </span>
-                    <span className="text-yellow-400 text-base">₿</span>
+                    <img src="/sat-icon.png" alt="SAT" className="w-4 h-4 rounded-full object-cover" />
                   </div>
                 </div>
               </div>

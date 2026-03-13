@@ -8,12 +8,14 @@ import { showNotification } from "@/components/AppNotification";
 
 declare global {
   interface Window {
+    show_9368336: (type?: string | { type: string; inAppSettings: any }) => Promise<void>;
     show_10401872: (type?: string | { type: string; inAppSettings: any }) => Promise<void>;
     Adsgram: {
       init: (config: { blockId: string }) => {
         show: () => Promise<void>;
       };
     };
+    showGiga: (placement: string) => Promise<void>;
   }
 }
 
@@ -72,9 +74,14 @@ export default function AdWatchingSection({ user, section = 'section1' }: AdWatc
 
   const showMonetagAd = (): Promise<{ success: boolean; watchedFully: boolean; unavailable: boolean }> => {
     return new Promise((resolve) => {
-      if (typeof window.show_10401872 === 'function') {
+      const showFn = typeof window.show_9368336 === 'function'
+        ? window.show_9368336
+        : typeof window.show_10401872 === 'function'
+        ? window.show_10401872
+        : null;
+      if (showFn) {
         monetagStartTimeRef.current = Date.now();
-        window.show_10401872()
+        showFn()
           .then(() => {
             const watchDuration = Date.now() - monetagStartTimeRef.current;
             const watchedAtLeast3Seconds = watchDuration >= 3000;
@@ -96,12 +103,27 @@ export default function AdWatchingSection({ user, section = 'section1' }: AdWatc
     return new Promise(async (resolve) => {
       if (window.Adsgram) {
         try {
-          await window.Adsgram.init({ blockId: "20372" }).show();
+          await window.Adsgram.init({ blockId: "25054" }).show();
           resolve(true);
         } catch (error) {
           console.error('Adsgram ad error:', error);
           resolve(false);
         }
+      } else {
+        resolve(false);
+      }
+    });
+  };
+
+  const showGigaPubAd = (): Promise<boolean> => {
+    return new Promise((resolve) => {
+      if (typeof window.showGiga === 'function') {
+        window.showGiga("main")
+          .then(() => resolve(true))
+          .catch((e) => {
+            console.error('GigaPub ad error:', e);
+            resolve(false);
+          });
       } else {
         resolve(false);
       }
@@ -151,7 +173,19 @@ export default function AdWatchingSection({ user, section = 'section1' }: AdWatc
         return;
       }
       
-      // STEP 3: Grant reward after Monetag complete successfully
+      // STEP 2: Show second ad based on section
+      setCurrentAdStep('adsgram');
+      try {
+        if (section === 'section1') {
+          await showAdsgramAd();
+        } else {
+          await showGigaPubAd();
+        }
+      } catch (e) {
+        console.error('Second ad error:', e);
+      }
+
+      // STEP 3: Grant reward after both ads complete
       setCurrentAdStep('verifying');
       
       if (!sessionRewardedRef.current) {
@@ -223,7 +257,7 @@ export default function AdWatchingSection({ user, section = 'section1' }: AdWatc
         {isShowingAds ? (
           <div className="flex items-center gap-2">
             <Loader2 className="w-3.5 h-3.5 animate-spin" />
-            <span>{currentAdStep === 'monetag' ? 'Wait' : 'Check'}</span>
+            <span>{currentAdStep === 'monetag' || currentAdStep === 'adsgram' ? 'Wait' : 'Check'}</span>
           </div>
         ) : (
           <span className="flex items-center gap-1.5">
