@@ -11,7 +11,7 @@ import { SettingsPopup } from "@/components/SettingsPopup";
 import InvitePopup from "@/components/InvitePopup";
 import { useLanguage } from "@/hooks/useLanguage";
 import { MatrixMiningCounter } from "@/components/MatrixMiningCounter";
-import { Award, Wallet, RefreshCw, Flame, Ticket, Info, User as UserIcon, Clock, Loader2, Gift, Rocket, X, Bug, DollarSign, Coins, Send, Users, Check, ExternalLink, Plus, CalendarCheck, Bell, Star, Play, Zap, Settings, Film, Tv, ClipboardList, UserPlus, Share2, Copy, HandCoins, LogOut, Download, ShieldCheck } from "lucide-react";
+import { Award, Wallet, RefreshCw, Flame, Ticket, Info, User as UserIcon, Clock, Loader2, Gift, Rocket, X, Bug, DollarSign, Coins, Send, Users, Check, ExternalLink, Plus, CalendarCheck, Bell, Star, Play, Zap, Settings, Film, Tv, ClipboardList, UserPlus, Share2, Copy, HandCoins, LogOut, Download, ShieldCheck, Menu } from "lucide-react";
 import { DiamondIcon } from "@/components/DiamondIcon";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -21,6 +21,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { AnimatePresence, motion } from "framer-motion";
 import WithdrawalPopup from "@/components/WithdrawalPopup";
+import MenuPopup from "@/components/MenuPopup";
 
 
 // Unified Task Interface
@@ -76,6 +77,7 @@ export default function Home() {
   const [boosterPopupOpen, setBoosterPopupOpen] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [inviteOpen, setInviteOpen] = useState(false);
+  const [menuOpen, setMenuOpen] = useState(false);
   const [selectedConvertType, setSelectedConvertType] = useState<'' | 'BUG'>('');
   const [convertAmount, setConvertAmount] = useState<string>("");
   const [completedTasks, setCompletedTasks] = useState<Set<string>>(new Set());
@@ -1123,7 +1125,7 @@ export default function Home() {
 
   return (
     <Layout>
-      <main className="max-w-md mx-auto px-4 pt-4 pb-24">
+      <main className="max-w-md mx-auto px-4 pt-4 pb-6">
         {/* Unified Profile & Balance Section */}
         <div className="mb-4 relative">
           <div className="flex justify-between items-center mb-4">
@@ -1157,13 +1159,11 @@ export default function Home() {
               </div>
             </div>
 
-            {/* Invite Friends Button */}
             <button
-              onClick={() => setInviteOpen(true)}
-              className="flex items-center gap-1.5 bg-[#1a1a1a] border border-white/10 rounded-xl px-3 py-2 hover:bg-white/10 transition-all active:scale-95"
+              onClick={() => setMenuOpen(true)}
+              className="w-9 h-9 flex items-center justify-center rounded-xl bg-[#1a1a1a] border border-white/10 hover:bg-white/10 transition-all active:scale-95"
             >
-              <Users className="w-4 h-4 text-white" />
-              <span className="text-white text-xs font-black uppercase tracking-wider">Invite</span>
+              <Menu className="w-4 h-4 text-white" />
             </button>
           </div>
 
@@ -1270,6 +1270,30 @@ export default function Home() {
               <div className="grid grid-cols-2 gap-3">
                 <AdWatchingSection user={user as User} section="section1" />
                 <AdWatchingSection user={user as User} section="section2" />
+              </div>
+
+              {/* Invite Friends Section */}
+              <div
+                className="mt-3 bg-[#141414] rounded-2xl p-4 border border-white/5 cursor-pointer hover:bg-[#1a1a1a] transition-all active:scale-[0.99]"
+                onClick={() => setInviteOpen(true)}
+              >
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    <Gift className="w-6 h-6 text-blue-400 flex-shrink-0" />
+                    <div>
+                      <p className="text-white font-black text-sm leading-tight">
+                        Invite Friends and Earn
+                      </p>
+                      <p className="text-blue-400 font-bold text-xs mt-0.5">
+                        up to 100/h Sats
+                      </p>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-1.5 bg-blue-600 rounded-xl px-3 py-2 flex-shrink-0">
+                    <Send className="w-3.5 h-3.5 text-white" />
+                    <span className="text-white text-xs font-black uppercase tracking-wider">Invite</span>
+                  </div>
+                </div>
               </div>
           </div>
         </div>
@@ -1486,6 +1510,7 @@ export default function Home() {
       )}
 
       {inviteOpen && <InvitePopup onClose={() => setInviteOpen(false)} />}
+      {menuOpen && <MenuPopup onClose={() => setMenuOpen(false)} />}
 
       <WithdrawalPopup 
         open={withdrawPopupOpen}
