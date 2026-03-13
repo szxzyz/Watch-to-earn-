@@ -1422,22 +1422,7 @@ ${walletAddress}
               })
             });
             
-            if (userTelegramId) {
-              // User confirmation message with Amount (net after fee) and Fee with percentage
-              const userConfirmationMessage = `🚀 Your payout has been successfully processed.
-
-💵 Amount: ${Math.floor(netAmount)} SAT
-🛂 Fee: ${Math.floor(feeAmount)} SAT (${feePercent}%)`;
-              
-              // Always show "Share in Group" button instead of transaction button
-              const shareInGroupButton = {
-                inline_keyboard: [[
-                  { text: '📢 Share in Group', url: 'https://t.me/szxzyz' }
-                ]]
-              };
-              
-              await sendUserTelegramNotification(userTelegramId, userConfirmationMessage, shareInGroupButton);
-            }
+            // User payout notification intentionally removed
             
             await fetch(`https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/answerCallbackQuery`, {
               method: 'POST',

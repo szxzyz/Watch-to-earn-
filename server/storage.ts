@@ -1582,7 +1582,7 @@ export class DatabaseStorage implements IStorage {
       const feeSetting = await db.select().from(adminSettings).where(eq(adminSettings.settingKey, 'withdrawal_fee_sat')).limit(1);
       
       const minWithdrawValue = parseFloat(minWithdrawSetting[0]?.settingValue || "100");
-      const feeValue = parseFloat(feeSetting[0]?.settingValue || "0");
+      const feeValue = parseFloat(feeSetting[0]?.settingValue || "10");
       
       updatePaymentSystemsFromSettings(minWithdrawValue, feeValue);
 
