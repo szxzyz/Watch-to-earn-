@@ -1126,7 +1126,7 @@ export default function Home() {
 
   return (
     <Layout>
-      <main className="max-w-md mx-auto px-4 pt-8 pb-0">
+      <main className="max-w-md mx-auto px-4 pt-12 pb-0">
         {/* Unified Profile & Balance Section */}
         <div className="mb-4 relative">
           <div className="flex justify-between items-center mb-4">
