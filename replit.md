@@ -60,6 +60,19 @@ CashWatch is a Telegram-based earning platform where users mine Satoshi (SAT) by
 
 ## Recent Changes
 
+### March 2026 - Send & Receive SAT System + Home Button Redesign
+- **4-Button Action Row**: Replaced the 2-button grid (Withdraw, Promo) with a 4-button row in order: Send, Withdraw, Promo, Receive. Each button has an icon and label in a small rounded card matching the dark theme.
+- **Send SAT Feature**: Users can send SAT to other users internally. Send popup allows entering Recipient ID / Username, Amount, and optional Note. Balance is deducted from sender and added to receiver atomically.
+- **Receive SAT Feature**: Receive popup shows the user's ID and username with copy buttons. Includes a message guiding users to share their ID.
+- **sat_transfers table**: New database table stores all SAT transfers with sender_id, receiver_id, amount, note, and created_at.
+- **API Endpoints**:
+  - `POST /api/transfers/send` - Sends SAT from authenticated user to recipient (by ID, username, or telegram_id)
+  - `GET /api/users/lookup?q=...` - Looks up a user by ID or username
+  - `GET /api/transactions` - Now includes sentTransfers and receivedTransfers in response
+- **Transaction History**: All send/receive actions appear in the Transactions overlay with distinct icons and colors (orange for sent, emerald for received). Notes are displayed inline.
+
+
+
 ### December 19, 2024 - Task Verification and Claim System Fixes
 - **Channel/Group Join Task Verification**: Added Telegram bot verification to `/api/tasks/complete/channel` and `/api/tasks/complete/community` endpoints. Users must now verify they joined the channel/group before receiving the reward.
 - **Advertiser Task Claim System**: Modified advertiser tasks to require explicit claim step:
