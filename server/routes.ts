@@ -398,8 +398,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       });
 
       res.json({
-        minimum_withdrawal_sat: settingsMap['minimum_withdrawal_sat'] || '100',
-        withdrawal_fee_sat: settingsMap['withdrawal_fee_sat'] || '0',
+        minimum_withdrawal_sat: settingsMap['minimum_withdrawal_sat'] || '20',
+        withdrawal_fee_sat: settingsMap['withdrawal_fee_sat'] || '10',
         minimum_withdrawal_ton: settingsMap['minimum_withdrawal_ton'] || '100',
         withdrawal_fee_ton: settingsMap['withdrawal_fee_ton'] || '0',
         ad_section1_limit: settingsMap['ad_section1_limit'] || '250',
@@ -409,8 +409,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       });
     } catch (error) {
       res.json({ 
-        minimum_withdrawal_sat: '100',
-        withdrawal_fee_sat: '0',
+        minimum_withdrawal_sat: '20',
+        withdrawal_fee_sat: '10',
         minimum_withdrawal_ton: '100', 
         withdrawal_fee_ton: '0',
         ad_section1_limit: '250',
@@ -2135,7 +2135,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           channelMember,
           groupMember,
           isActive,
-          miningBoost: isActive ? 0.1 : 0,
+          miningBoost: isActive ? 0.02 : 0,
         });
       }
 
@@ -2200,9 +2200,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
           let notifMsg = '';
           if (what === 'channel & group') {
-            notifMsg = `⚠️ Your friend <b>${refName}</b> has left the channel & group. Your mining speed -0.1/h has been removed.`;
+            notifMsg = `⚠️ Your friend <b>${refName}</b> has left the channel & group. Your mining speed -0.02/h has been removed.`;
           } else {
-            notifMsg = `⚠️ Your friend <b>${refName}</b> has left the ${what}. Your mining speed -0.1/h has been removed. Ask your friend to rejoin the ${what} so your mining speed continues.`;
+            notifMsg = `⚠️ Your friend <b>${refName}</b> has left the ${what}. Your mining speed -0.02/h has been removed. Ask your friend to rejoin the ${what} so your mining speed continues.`;
           }
 
           try {
@@ -2212,8 +2212,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
       }
 
-      // 0.1/h per active referral in terms of rate-per-hour
-      const newBoostPerHour = activeCount * 0.1;
+      // 0.02/h per active referral in terms of rate-per-hour
+      const newBoostPerHour = activeCount * 0.02;
       // Store as per-hour value (the UI shows /h directly)
       const newBoost = newBoostPerHour.toFixed(8);
 
