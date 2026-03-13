@@ -11,7 +11,7 @@ import { SettingsPopup } from "@/components/SettingsPopup";
 import InvitePopup from "@/components/InvitePopup";
 import { useLanguage } from "@/hooks/useLanguage";
 import { MatrixMiningCounter } from "@/components/MatrixMiningCounter";
-import { Award, Wallet, RefreshCw, Flame, Ticket, Info, User as UserIcon, Clock, Loader2, Gift, Rocket, X, Bug, DollarSign, Coins, Send, Users, Check, ExternalLink, Plus, CalendarCheck, Bell, Star, Play, Zap, Settings, Film, Tv, ClipboardList, UserPlus, Share2, Copy, HandCoins, LogOut, Download, ShieldCheck, QrCode, ArrowDown } from "lucide-react";
+import { Award, Wallet, RefreshCw, Flame, Ticket, Info, User as UserIcon, Clock, Loader2, Gift, Rocket, X, Bug, DollarSign, Coins, Send, Users, Check, ExternalLink, Plus, CalendarCheck, Bell, Star, Play, Zap, Settings, Film, Tv, ClipboardList, UserPlus, Share2, Copy, HandCoins, LogOut, Download, ShieldCheck } from "lucide-react";
 import { DiamondIcon } from "@/components/DiamondIcon";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -72,11 +72,6 @@ export default function Home() {
 
   const [promoPopupOpen, setPromoPopupOpen] = useState(false);
   const [withdrawPopupOpen, setWithdrawPopupOpen] = useState(false);
-  const [sendPopupOpen, setSendPopupOpen] = useState(false);
-  const [receivePopupOpen, setReceivePopupOpen] = useState(false);
-  const [sendRecipient, setSendRecipient] = useState("");
-  const [sendAmount, setSendAmount] = useState("");
-  const [sendNote, setSendNote] = useState("");
   const [convertPopupOpen, setConvertPopupOpen] = useState(false);
   const [boosterPopupOpen, setBoosterPopupOpen] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
@@ -293,26 +288,6 @@ export default function Home() {
     },
     onError: (error: Error) => {
       showNotification(error.message, "error");
-    },
-  });
-
-  const sendSatMutation = useMutation({
-    mutationFn: async ({ recipientId, amount, note }: { recipientId: string; amount: string; note: string }) => {
-      const response = await apiRequest("POST", "/api/transfers/send", { recipientId, amount: Number(amount), note });
-      const data = await response.json();
-      if (!response.ok) throw new Error(data.message || "Transfer failed");
-      return data;
-    },
-    onSuccess: (data) => {
-      queryClient.invalidateQueries({ queryKey: ["/api/auth/user"] });
-      showNotification(data.message, "success");
-      setSendPopupOpen(false);
-      setSendRecipient("");
-      setSendAmount("");
-      setSendNote("");
-    },
-    onError: (error: any) => {
-      showNotification(error.message || "Transfer failed", "error");
     },
   });
 
@@ -1274,89 +1249,21 @@ export default function Home() {
                   </Button>
                 </div>
 
-                {/* 4 Action Buttons Row — futuristic tab style */}
-                <div className="flex gap-1.5 pt-4 border-t border-white/5">
-
-                  {/* Receive — dark outer left */}
-                  <button
-                    onClick={() => setReceivePopupOpen(true)}
-                    className="flex flex-col items-center justify-center gap-2 flex-1 rounded-2xl py-5 px-2 transition-all active:scale-95"
-                    style={{
-                      background: 'linear-gradient(175deg, #333 0%, #1c1c1c 60%, #141414 100%)',
-                      boxShadow: '0 8px 20px rgba(0,0,0,0.7), inset 0 1.5px 0 rgba(255,255,255,0.1), inset 0 -3px 6px rgba(0,0,0,0.5)',
-                    }}
-                  >
-                    <div className="flex flex-col items-center gap-0.5">
-                      <QrCode className="w-6 h-6 text-white/80" />
-                      <ArrowDown className="w-3 h-3 text-white/50 -mt-1" />
-                    </div>
-                    <span className="text-white/60 text-[9px] font-black uppercase tracking-widest">Receive</span>
-                  </button>
-
-                  {/* Send — lime left tab, fake notch at top-right */}
-                  <button
-                    onClick={() => setSendPopupOpen(true)}
-                    className="relative flex items-center justify-center flex-1 transition-all active:scale-95"
-                    style={{
-                      background: 'linear-gradient(170deg, #e0ff4a 0%, #c6ff00 50%, #aee600 100%)',
-                      borderRadius: '14px 0 14px 14px',
-                      minHeight: '82px',
-                      boxShadow: '0 8px 22px rgba(180,240,0,0.45), inset 0 2px 0 rgba(255,255,255,0.5), inset 0 -3px 6px rgba(0,0,0,0.15)',
-                    }}
-                  >
-                    {/* Fake concave notch: dark overlay at top-right corner */}
-                    <div
-                      className="absolute top-0 right-0 pointer-events-none"
-                      style={{
-                        width: '40%',
-                        height: '40%',
-                        background: '#141414',
-                        borderBottomLeftRadius: '14px',
-                      }}
-                    />
-                    <ExternalLink className="w-5 h-5 text-black/75 relative z-10" strokeWidth={2} />
-                  </button>
-
-                  {/* Withdraw — lime right tab, fake notch at top-left */}
-                  <button
+                <div className="grid grid-cols-2 gap-3 pt-4 border-t border-white/5">
+                  <Button
                     onClick={() => setWithdrawPopupOpen(true)}
-                    className="relative flex items-center justify-center flex-1 transition-all active:scale-95"
-                    style={{
-                      background: 'linear-gradient(170deg, #e0ff4a 0%, #c6ff00 50%, #aee600 100%)',
-                      borderRadius: '0 14px 14px 14px',
-                      minHeight: '82px',
-                      boxShadow: '0 8px 22px rgba(180,240,0,0.45), inset 0 2px 0 rgba(255,255,255,0.5), inset 0 -3px 6px rgba(0,0,0,0.15)',
-                    }}
+                    className="w-full h-11 bg-[#F5C542] hover:bg-yellow-400 text-black rounded-xl font-black text-xs uppercase tracking-widest transition-all shadow-lg shadow-yellow-500/20"
                   >
-                    {/* Fake concave notch: dark overlay at top-left corner */}
-                    <div
-                      className="absolute top-0 left-0 pointer-events-none"
-                      style={{
-                        width: '40%',
-                        height: '40%',
-                        background: '#141414',
-                        borderBottomRightRadius: '14px',
-                      }}
-                    />
-                    <ArrowDown className="w-5 h-5 text-black/75 relative z-10" strokeWidth={2.5} />
-                  </button>
-
-                  {/* Promo — dark outer right */}
-                  <button
+                    <Download className="w-4 h-4" />
+                    Withdraw
+                  </Button>
+                  <Button
                     onClick={() => setPromoPopupOpen(true)}
-                    className="flex flex-col items-center justify-center gap-2 flex-1 rounded-2xl py-5 px-2 transition-all active:scale-95"
-                    style={{
-                      background: 'linear-gradient(175deg, #333 0%, #1c1c1c 60%, #141414 100%)',
-                      boxShadow: '0 8px 20px rgba(0,0,0,0.7), inset 0 1.5px 0 rgba(255,255,255,0.1), inset 0 -3px 6px rgba(0,0,0,0.5)',
-                    }}
+                    className="w-full h-11 bg-white hover:bg-zinc-200 text-black rounded-xl font-black text-xs uppercase tracking-widest transition-all shadow-lg shadow-white/5"
                   >
-                    <div className="relative flex items-center justify-center">
-                      <Gift className="w-6 h-6 text-white/80" />
-                      <Star className="w-3 h-3 text-yellow-300/80 fill-yellow-300/60 absolute -top-2 -right-2" />
-                    </div>
-                    <span className="text-white/60 text-[9px] font-black uppercase tracking-widest">Promo</span>
-                  </button>
-
+                    <Ticket className="w-4 h-4" />
+                    {t('promo')}
+                  </Button>
                 </div>
               </div>
 
@@ -1571,153 +1478,6 @@ export default function Home() {
         </div>
       )}
 
-
-      {/* Send SAT Popup */}
-      {sendPopupOpen && (
-        <div className="fixed inset-0 bg-black/90 flex items-end justify-center z-[60] px-4 pb-6 backdrop-blur-sm">
-          <motion.div
-            initial={{ opacity: 0, y: 80 }}
-            animate={{ opacity: 1, y: 0 }}
-            className="bg-[#0d0d0d] rounded-[24px] p-6 w-full max-w-[360px] border border-white/5 shadow-2xl"
-          >
-            <div className="flex items-center gap-3 mb-5">
-              <div className="w-10 h-10 rounded-2xl bg-blue-500/15 flex items-center justify-center">
-                <Send className="w-5 h-5 text-blue-400" />
-              </div>
-              <div>
-                <h2 className="text-base font-black text-white uppercase tracking-tight">Send SAT</h2>
-                <p className="text-[10px] text-zinc-500 font-bold">Transfer SAT to another user</p>
-              </div>
-            </div>
-
-            <div className="space-y-3">
-              <div>
-                <label className="text-[10px] text-zinc-400 font-black uppercase tracking-wider mb-1.5 block">Recipient ID / Username</label>
-                <Input
-                  placeholder="Enter user ID or username"
-                  value={sendRecipient}
-                  onChange={(e) => setSendRecipient(e.target.value)}
-                  className="bg-white/5 border-white/10 rounded-[14px] text-white text-sm font-bold placeholder:text-zinc-600 h-12"
-                />
-              </div>
-              <div>
-                <label className="text-[10px] text-zinc-400 font-black uppercase tracking-wider mb-1.5 block">Amount (SAT)</label>
-                <Input
-                  type="number"
-                  placeholder="Enter amount"
-                  value={sendAmount}
-                  onChange={(e) => setSendAmount(e.target.value)}
-                  min="1"
-                  className="bg-white/5 border-white/10 rounded-[14px] text-white text-sm font-bold placeholder:text-zinc-600 h-12"
-                />
-                <p className="text-[10px] text-zinc-500 mt-1 font-bold">
-                  Available: {Math.floor(parseFloat((user as User)?.balance || "0")).toLocaleString()} SAT
-                </p>
-              </div>
-              <div>
-                <label className="text-[10px] text-zinc-400 font-black uppercase tracking-wider mb-1.5 block">Note (optional)</label>
-                <Input
-                  placeholder="Add a note..."
-                  value={sendNote}
-                  onChange={(e) => setSendNote(e.target.value)}
-                  className="bg-white/5 border-white/10 rounded-[14px] text-white text-sm font-bold placeholder:text-zinc-600 h-12"
-                />
-              </div>
-
-              <Button
-                onClick={() => {
-                  if (!sendRecipient.trim()) { showNotification("Enter a recipient ID", "error"); return; }
-                  if (!sendAmount || Number(sendAmount) <= 0) { showNotification("Enter a valid amount", "error"); return; }
-                  sendSatMutation.mutate({ recipientId: sendRecipient.trim(), amount: sendAmount, note: sendNote.trim() });
-                }}
-                disabled={sendSatMutation.isPending}
-                className="w-full h-12 bg-blue-600 hover:bg-blue-700 text-white rounded-[16px] font-black text-sm transition-all active:scale-95 shadow-lg shadow-blue-500/20"
-              >
-                {sendSatMutation.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : "Send SAT"}
-              </Button>
-              <Button
-                onClick={() => { setSendPopupOpen(false); setSendRecipient(""); setSendAmount(""); setSendNote(""); }}
-                className="w-full h-10 bg-white/5 hover:bg-white/10 border border-white/10 text-white rounded-[16px] font-black text-xs uppercase tracking-wider"
-              >
-                Cancel
-              </Button>
-            </div>
-          </motion.div>
-        </div>
-      )}
-
-      {/* Receive SAT Popup */}
-      {receivePopupOpen && (
-        <div className="fixed inset-0 bg-black/90 flex items-end justify-center z-[60] px-4 pb-6 backdrop-blur-sm">
-          <motion.div
-            initial={{ opacity: 0, y: 80 }}
-            animate={{ opacity: 1, y: 0 }}
-            className="bg-[#0d0d0d] rounded-[24px] p-6 w-full max-w-[360px] border border-white/5 shadow-2xl"
-          >
-            <div className="flex items-center gap-3 mb-5">
-              <div className="w-10 h-10 rounded-2xl bg-green-500/15 flex items-center justify-center">
-                <Download className="w-5 h-5 text-green-400 rotate-180" />
-              </div>
-              <div>
-                <h2 className="text-base font-black text-white uppercase tracking-tight">Receive SAT</h2>
-                <p className="text-[10px] text-zinc-500 font-bold">Share your details to receive SAT</p>
-              </div>
-            </div>
-
-            <p className="text-[11px] text-zinc-400 font-bold mb-4 bg-white/5 rounded-xl px-3 py-2.5 border border-white/5">
-              Share your User ID so other users can send you SAT directly.
-            </p>
-
-            <div className="space-y-3 mb-4">
-              <div>
-                <label className="text-[10px] text-zinc-500 font-black uppercase tracking-wider mb-1.5 block">Your User ID</label>
-                <div className="flex items-center gap-2">
-                  <div className="flex-1 bg-white/5 border border-white/10 rounded-[14px] px-3 h-12 flex items-center">
-                    <span className="text-white text-sm font-bold truncate">{(user as User)?.id || "N/A"}</span>
-                  </div>
-                  <button
-                    onClick={() => {
-                      const id = (user as User)?.id || "";
-                      navigator.clipboard.writeText(id);
-                      showNotification("User ID copied!", "success");
-                    }}
-                    className="w-12 h-12 rounded-[14px] bg-green-600 hover:bg-green-700 flex items-center justify-center flex-shrink-0 transition-all active:scale-95"
-                  >
-                    <Copy className="w-4 h-4 text-white" />
-                  </button>
-                </div>
-              </div>
-
-              {(user as User)?.username && (
-                <div>
-                  <label className="text-[10px] text-zinc-500 font-black uppercase tracking-wider mb-1.5 block">Username</label>
-                  <div className="flex items-center gap-2">
-                    <div className="flex-1 bg-white/5 border border-white/10 rounded-[14px] px-3 h-12 flex items-center">
-                      <span className="text-white text-sm font-bold">@{(user as User)?.username}</span>
-                    </div>
-                    <button
-                      onClick={() => {
-                        navigator.clipboard.writeText((user as User)?.username || "");
-                        showNotification("Username copied!", "success");
-                      }}
-                      className="w-12 h-12 rounded-[14px] bg-white/10 hover:bg-white/15 flex items-center justify-center flex-shrink-0 transition-all active:scale-95"
-                    >
-                      <Copy className="w-4 h-4 text-white" />
-                    </button>
-                  </div>
-                </div>
-              )}
-            </div>
-
-            <Button
-              onClick={() => setReceivePopupOpen(false)}
-              className="w-full h-11 bg-white/5 hover:bg-white/10 border border-white/10 text-white rounded-[16px] font-black text-xs uppercase tracking-wider"
-            >
-              Close
-            </Button>
-          </motion.div>
-        </div>
-      )}
 
       {settingsOpen && (
         <SettingsPopup 
