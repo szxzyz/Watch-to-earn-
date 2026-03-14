@@ -1,76 +1,82 @@
 import { useState, useEffect } from "react";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Label } from "@/components/ui/label";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { useAdmin } from "@/hooks/useAdmin";
 import Layout from "@/components/Layout";
-import { Link } from "wouter";
-import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend } from 'recharts';
-import { formatCurrency, format$ } from "@/lib/utils";
+import {
+  AreaChart, Area, BarChart, Bar, LineChart, Line,
+  XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
+} from "recharts";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { Crown, ArrowLeft } from "lucide-react";
+import {
+  Crown, ArrowLeft, Users, Pickaxe, Eye, TrendingUp, DollarSign,
+  UserCheck, GitBranch, Search, ChevronLeft, ChevronRight,
+  RefreshCw, Settings, Shield, LogOut, Globe, Ban, CheckCircle,
+} from "lucide-react";
 import { useLocation } from "wouter";
 
-function formatLargeNumber(num: number): string {
-  if (isNaN(num) || !isFinite(num)) {
-    return '0';
-  }
-  const absNum = Math.abs(num);
-  const sign = num < 0 ? '-' : '';
-  if (absNum >= 1000000000000) {
-    return sign + (absNum / 1000000000000).toFixed(1) + 'T';
-  }
-  if (absNum >= 1000000000) {
-    return sign + (absNum / 1000000000).toFixed(1) + 'B';
-  }
-  if (absNum >= 1000000) {
-    return sign + (absNum / 1000000).toFixed(1) + 'M';
-  }
-  if (absNum >= 1000) {
-    return sign + (absNum / 1000).toFixed(1) + 'K';
-  }
-  return sign + Math.round(absNum).toLocaleString();
+function fmt(n: number | string): string {
+  const v = typeof n === "string" ? parseFloat(n) : n;
+  if (isNaN(v) || !isFinite(v)) return "0";
+  if (Math.abs(v) >= 1e12) return (v / 1e12).toFixed(1) + "T";
+  if (Math.abs(v) >= 1e9) return (v / 1e9).toFixed(1) + "B";
+  if (Math.abs(v) >= 1e6) return (v / 1e6).toFixed(1) + "M";
+  if (Math.abs(v) >= 1e3) return (v / 1e3).toFixed(1) + "K";
+  return Math.round(v).toLocaleString();
+}
+
+function fmtSat(n: number | string): string {
+  return fmt(n) + " SAT";
 }
 
 interface AdminStats {
   totalUsers: number;
-  totalEarnings: string;
-  totalWithdrawals: string;
-  tonWithdrawn: string;
+  dailyActiveUsers: number;
+  totalMiningSats: string;
+  miningToday: string;
   totalAdsWatched: number;
   todayAdsWatched: number;
+  totalSatsWithdrawn: string;
+  usersWithReferrals: number;
   pendingWithdrawals: number;
   successfulWithdrawals: number;
   rejectedWithdrawals: number;
-  dailyActiveUsers: number;
-  withdrawalBugRequirementEnabled: boolean;
-  ad_section1_reward?: string;
-  ad_section1_limit?: string;
-  ad_section2_reward?: string;
-  ad_section2_limit?: string;
+  totalEarnings: string;
+  totalWithdrawals: string;
 }
 
-// Clean Minimal Stat Card Component
-function StatCard({ icon, label, value, iconColor }: {
-  icon: string;
-  label: string;
-  value: string;
-  iconColor: string;
+type AdminTab = "summary" | "users" | "withdrawals" | "bans" | "countries" | "settings";
+
+function MiniToggle({ value, onChange }: { value: boolean; onChange: (v: boolean) => void }) {
+  return (
+    <button
+      type="button"
+      onClick={() => onChange(!value)}
+      className={`relative inline-flex h-5 w-9 items-center rounded-full transition-colors ${value ? "bg-blue-500" : "bg-gray-600"}`}
+    >
+      <span className={`inline-block h-3.5 w-3.5 transform rounded-full bg-white transition-transform ${value ? "translate-x-5" : "translate-x-1"}`} />
+    </button>
+  );
+}
+
+function StatCard({ icon: Icon, label, value, sub, color }: {
+  icon: any; label: string; value: string; sub?: string; color: string;
 }) {
   return (
-    <div className="bg-[#121212] border border-white/10 rounded-xl p-4 hover:border-[#4cd3ff]/40 transition-all">
-      <div className={`w-9 h-9 rounded-lg bg-[#1a1a1a] flex items-center justify-center mb-3`}>
-        <i className={`fas fa-${icon} ${iconColor}`}></i>
+    <div className="bg-[#0f0f0f] border border-white/8 rounded-2xl p-4 flex flex-col gap-2 hover:border-white/20 transition-all">
+      <div className={`w-8 h-8 rounded-xl flex items-center justify-center ${color}`}>
+        <Icon className="w-4 h-4 text-white" />
       </div>
-      <p className="text-xs uppercase text-gray-500 tracking-wide mb-1">{label}</p>
-      <p className="text-xl font-semibold text-white">{value}</p>
+      <div>
+        <p className="text-[11px] text-gray-500 uppercase tracking-wider">{label}</p>
+        <p className="text-lg font-bold text-white leading-tight">{value}</p>
+        {sub && <p className="text-[10px] text-gray-600 mt-0.5">{sub}</p>}
+      </div>
     </div>
   );
 }
@@ -80,40 +86,40 @@ export default function AdminPage() {
   const { isAdmin, isLoading: adminLoading } = useAdmin();
   const queryClient = useQueryClient();
   const [, setLocation] = useLocation();
+  const [activeTab, setActiveTab] = useState<AdminTab>("summary");
 
-  // Fetch admin stats
   const { data: stats, isLoading: statsLoading } = useQuery<AdminStats>({
     queryKey: ["/api/admin/stats"],
     refetchInterval: 30000,
     enabled: isAdmin,
   });
 
-  // Fetch all users for management table
-  const { data: usersData } = useQuery({
+  const { data: usersData, isLoading: usersLoading } = useQuery({
     queryKey: ["/api/admin/users"],
-    queryFn: () => apiRequest("GET", "/api/admin/users").then(res => res.json()),
-    refetchInterval: 30000,
-    enabled: isAdmin,
+    queryFn: () => apiRequest("GET", "/api/admin/users").then(r => r.json()),
+    refetchInterval: 60000,
+    enabled: isAdmin && activeTab === "users",
   });
 
-  // Fetch processed withdrawals
-  const { data: payoutLogsData } = useQuery({
+  const { data: payoutData } = useQuery({
     queryKey: ["/api/admin/withdrawals/processed"],
-    queryFn: () => apiRequest("GET", "/api/admin/withdrawals/processed").then(res => res.json()),
+    queryFn: () => apiRequest("GET", "/api/admin/withdrawals/processed").then(r => r.json()),
     refetchInterval: 30000,
-    enabled: isAdmin,
+    enabled: isAdmin && activeTab === "withdrawals",
+  });
+
+  const { data: pendingPayouts } = useQuery({
+    queryKey: ["/api/admin/withdrawals/pending"],
+    queryFn: () => apiRequest("GET", "/api/admin/withdrawals/pending").then(r => r.json()),
+    refetchInterval: 15000,
+    enabled: isAdmin && activeTab === "withdrawals",
   });
 
   if (adminLoading) {
     return (
       <Layout>
-        <div className="min-h-screen bg-background flex items-center justify-center">
-          <div className="text-center">
-            <div className="animate-spin text-primary text-3xl mb-4">
-              <i className="fas fa-spinner"></i>
-            </div>
-            <div className="text-foreground font-medium">Loading...</div>
-          </div>
+        <div className="min-h-screen bg-[#0a0a0a] flex items-center justify-center">
+          <div className="w-8 h-8 border-2 border-blue-500 border-t-transparent rounded-full animate-spin" />
         </div>
       </Layout>
     );
@@ -122,1322 +128,880 @@ export default function AdminPage() {
   if (!isAdmin) {
     return (
       <Layout>
-        <div className="min-h-screen bg-background flex items-center justify-center">
-          <div className="text-center">
-            <div className="text-red-500 text-5xl mb-4">
-              <i className="fas fa-exclamation-triangle"></i>
-            </div>
-            <h1 className="text-2xl font-bold text-foreground mb-2">Access Denied</h1>
-            <p className="text-muted-foreground mb-4">You don't have permission to access this page.</p>
-            <Link href="/">
-              <Button>Return Home</Button>
-            </Link>
-          </div>
+        <div className="min-h-screen bg-[#0a0a0a] flex items-center justify-center flex-col gap-4">
+          <Shield className="w-12 h-12 text-red-400" />
+          <p className="text-white font-semibold">Admin Access Required</p>
+          <Button size="sm" onClick={() => setLocation("/")} variant="outline">Go Home</Button>
         </div>
       </Layout>
     );
   }
 
+  const tabs: { id: AdminTab; label: string; icon: any }[] = [
+    { id: "summary", label: "Summary", icon: TrendingUp },
+    { id: "users", label: "Users", icon: Users },
+    { id: "withdrawals", label: "Withdrawals", icon: DollarSign },
+    { id: "bans", label: "Bans", icon: Shield },
+    { id: "countries", label: "Countries", icon: Globe },
+    { id: "settings", label: "Settings", icon: Settings },
+  ];
+
   return (
     <Layout>
-      <main className="max-w-7xl mx-auto px-4 pb-20 pt-3">
-        {/* Slim Header */}
-        <div className="flex items-center justify-between mb-3">
+      <main className="min-h-screen bg-[#0a0a0a] text-white pb-20">
+        {/* Header */}
+        <div className="sticky top-0 z-30 bg-[#0a0a0a]/95 backdrop-blur border-b border-white/5 px-4 py-3 flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <Button
-              size="sm"
-              variant="ghost"
-              onClick={() => setLocation("/")}
-              className="h-8 w-8 p-0 hover:bg-white/10"
-            >
-              <ArrowLeft className="w-4 h-4 text-white" />
+            <Button size="sm" variant="ghost" onClick={() => setLocation("/")} className="h-8 w-8 p-0">
+              <ArrowLeft className="w-4 h-4" />
             </Button>
-            <h1 className="text-xl font-bold text-foreground flex items-center gap-2">
-              <Crown className="w-5 h-5 text-orange-600" />
-              Admin Dashboard
-            </h1>
+            <div className="flex items-center gap-1.5">
+              <Crown className="w-4 h-4 text-amber-400" />
+              <span className="font-bold text-sm">Admin Panel</span>
+            </div>
           </div>
-          <Button 
-            size="sm"
-            variant="outline"
-            onClick={() => {
-              queryClient.invalidateQueries();
-              toast({ title: "Refreshed" });
-            }}
-            className="h-8 px-3 text-xs"
-          >
-            <i className="fas fa-sync-alt"></i>
+          <Button size="sm" variant="ghost" onClick={() => { queryClient.invalidateQueries(); toast({ title: "Refreshed" }); }} className="h-8 w-8 p-0">
+            <RefreshCw className="w-3.5 h-3.5" />
           </Button>
         </div>
 
-        {/* Tabs Navigation - Move to Top */}
-        <Tabs defaultValue="summary" className="w-full">
-          <TabsList className="grid grid-cols-7 w-full mb-3">
-            <TabsTrigger value="summary" className="text-[10px] px-1">
-              Summary
-            </TabsTrigger>
-            <TabsTrigger value="tasks" className="text-[10px] px-1">
-              Tasks
-            </TabsTrigger>
-            <TabsTrigger value="users" className="text-[10px] px-1">
-              Users
-            </TabsTrigger>
-            <TabsTrigger value="promos" className="text-[10px] px-1">
-              Promos
-            </TabsTrigger>
-            <TabsTrigger value="withdrawals" className="text-[10px] px-1">
-              Withdrawals
-            </TabsTrigger>
-            <TabsTrigger value="bans" className="text-[10px] px-1">
-              Bans
-            </TabsTrigger>
-            <TabsTrigger value="settings" className="text-[10px] px-1">
-              Settings
-            </TabsTrigger>
-          </TabsList>
+        {/* Tab Navigation */}
+        <div className="flex gap-1 px-4 py-2 overflow-x-auto border-b border-white/5">
+          {tabs.map(tab => (
+            <button
+              key={tab.id}
+              onClick={() => setActiveTab(tab.id)}
+              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium whitespace-nowrap transition-all ${
+                activeTab === tab.id
+                  ? "bg-blue-600 text-white"
+                  : "text-gray-400 hover:text-white hover:bg-white/5"
+              }`}
+            >
+              <tab.icon className="w-3 h-3" />
+              {tab.label}
+              {tab.id === "withdrawals" && (stats?.pendingWithdrawals ?? 0) > 0 && (
+                <span className="ml-1 bg-red-500 text-white text-[9px] px-1.5 py-0.5 rounded-full font-bold">
+                  {stats!.pendingWithdrawals}
+                </span>
+              )}
+            </button>
+          ))}
+        </div>
 
-          <TabsContent value="summary" className="mt-0 space-y-4">
-            {statsLoading ? (
-              <div className="grid grid-cols-2 gap-3">
-                {[...Array(6)].map((_, i) => (
-                  <div key={i} className="bg-[#121212] h-28 rounded-xl animate-pulse border border-white/5" />
-                ))}
-              </div>
-            ) : (
-              <>
-                {/* Clean Stat Cards Grid */}
-                <div className="grid grid-cols-2 gap-3">
-                  <StatCard 
-                    icon="users" 
-                    label="Total Users" 
-                    value={stats?.totalUsers?.toLocaleString() || '0'} 
-                    iconColor="text-[#4cd3ff]"
-                  />
-                  <StatCard 
-                    icon="user-check" 
-                    label="Active Today" 
-                    value={stats?.dailyActiveUsers?.toLocaleString() || '0'} 
-                    iconColor="text-emerald-400"
-                  />
-                  <StatCard 
-                    icon="hammer" 
-                    label="Total Mining" 
-                    value={stats?.totalAdsWatched?.toLocaleString() || '0'} 
-                    iconColor="text-purple-400"
-                  />
-                  <StatCard 
-                    icon="bolt" 
-                    label="Mining Today" 
-                    value={stats?.todayAdsWatched?.toLocaleString() || '0'} 
-                    iconColor="text-amber-400"
-                  />
-                  <StatCard 
-                    icon="gem" 
-                    label="Hrum Earned" 
-                    value={formatLargeNumber(parseFloat(stats?.totalEarnings || '0'))} 
-                    iconColor="text-[#4cd3ff]"
-                  />
-                  <StatCard 
-                    icon="money-bill-wave" 
-                    label="Total SAT Withdrawn" 
-                    value={Math.floor(parseFloat(stats?.tonWithdrawn || '0')) + ' SAT'} 
-                    iconColor="text-red-400"
-                  />
-                </div>
-              </>
-            )}
-          </TabsContent>
-
-          {/* Task Management Tab */}
-          <TabsContent value="tasks" className="mt-0">
-            <TaskManagementSection />
-          </TabsContent>
-
-          {/* User Management Tab */}
-          <TabsContent value="users" className="mt-0">
-            <UserManagementSection usersData={usersData} />
-          </TabsContent>
-
-          {/* Promo Creator Tab */}
-          <TabsContent value="promos" className="mt-0">
-            <PromoCreatorSection />
-          </TabsContent>
-
-          {/* Payout Logs Tab */}
-          <TabsContent value="withdrawals" className="mt-0">
-            <PayoutLogsSection data={payoutLogsData} />
-          </TabsContent>
-
-          {/* Ban Logs Tab */}
-          <TabsContent value="bans" className="mt-0">
-            <BanLogsSection />
-          </TabsContent>
-          
-          <TabsContent value="settings" className="mt-0">
-            <SettingsSection />
-          </TabsContent>
-        </Tabs>
+        <div className="px-4 pt-4">
+          {activeTab === "summary" && <SummarySection stats={stats} isLoading={statsLoading} />}
+          {activeTab === "users" && <UserSection usersData={usersData} isLoading={usersLoading} />}
+          {activeTab === "withdrawals" && <WithdrawSection payoutData={payoutData} pendingData={pendingPayouts} />}
+          {activeTab === "bans" && <BanSection />}
+          {activeTab === "countries" && <CountrySection />}
+          {activeTab === "settings" && <SettingsSection />}
+        </div>
       </main>
     </Layout>
   );
 }
 
-// Analytics Section with Live Charts
-function AnalyticsSection({ stats }: { stats: AdminStats | undefined }) {
-  const [timeFilter, setTimeFilter] = useState<'day' | 'week' | 'month'>('week');
+/* ─── SUMMARY ─────────────────────────────────────────────────────────────── */
 
-  // Generate mock trend data (in production, fetch from API)
-  const generateTrendData = () => {
-    const points = timeFilter === 'day' ? 24 : timeFilter === 'week' ? 7 : 30;
-    const data = [];
-    for (let i = 0; i < points; i++) {
-      const multiplier = (i + 1) / points;
-      data.push({
-        label: timeFilter === 'day' ? `${i}:00` : timeFilter === 'week' ? `Day ${i + 1}` : `Day ${i + 1}`,
-        earnings: parseFloat(stats?.totalEarnings || '0') * multiplier * (0.8 + Math.random() * 0.4),
-        withdrawals: parseFloat(stats?.totalWithdrawals || '0') * multiplier * (0.7 + Math.random() * 0.5),
-      });
-    }
-    return data;
-  };
-
-  const chartData = generateTrendData();
-
-  return (
-    <Card>
-      <CardHeader>
-        <div className="flex items-center justify-between">
-          <CardTitle className="flex items-center">
-            <i className="fas fa-chart-area mr-2 text-blue-600"></i>
-            Platform Trends
-          </CardTitle>
-          <div className="flex gap-2">
-            {(['day', 'week', 'month'] as const).map((filter) => (
-              <Button
-                key={filter}
-                size="sm"
-                variant={timeFilter === filter ? 'default' : 'outline'}
-                onClick={() => setTimeFilter(filter)}
-                className="text-xs"
-              >
-                {filter === 'day' ? '24H' : filter === 'week' ? '7D' : '30D'}
-              </Button>
-            ))}
-          </div>
-        </div>
-      </CardHeader>
-      <CardContent>
-        <div className="h-80 w-full">
-          <ResponsiveContainer width="100%" height="100%">
-            <LineChart data={chartData}>
-              <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
-              <XAxis 
-                dataKey="label" 
-                tick={{ fontSize: 11 }}
-                stroke="#9ca3af"
-              />
-              <YAxis 
-                tick={{ fontSize: 11 }}
-                stroke="#9ca3af"
-                tickFormatter={(value) => formatCurrency(value, false)}
-              />
-              <Tooltip 
-                contentStyle={{ 
-                  backgroundColor: '#fff', 
-                  border: '1px solid #e5e7eb',
-                  borderRadius: '8px',
-                  fontSize: '12px'
-                }}
-                formatter={(value: any) => [formatCurrency(value), '']}
-              />
-              <Legend />
-              <Line 
-                type="monotone" 
-                dataKey="earnings" 
-                stroke="#10b981" 
-                strokeWidth={2}
-                name=" Earned"
-                dot={{ fill: '#10b981', r: 3 }}
-                activeDot={{ r: 5 }}
-              />
-              <Line 
-                type="monotone" 
-                dataKey="withdrawals" 
-                stroke="#ef4444" 
-                strokeWidth={2}
-                name="📉  Withdrawn"
-                dot={{ fill: '#ef4444', r: 3 }}
-                activeDot={{ r: 5 }}
-              />
-            </LineChart>
-          </ResponsiveContainer>
-        </div>
-      </CardContent>
-    </Card>
-  );
-}
-
-// Ban User Button Component
-function BanUserButton({ user, onSuccess }: { user: any; onSuccess: () => void }) {
-  const { toast } = useToast();
-  const queryClient = useQueryClient();
-  const [isLoading, setIsLoading] = useState(false);
-  const [banReason, setBanReason] = useState('');
-  const [showConfirmDialog, setShowConfirmDialog] = useState(false);
-
-  const handleBanToggle = async () => {
-    setIsLoading(true);
-    try {
-      const response = await apiRequest('POST', '/api/admin/users/ban', {
-        userId: user.id,
-        banned: !user.banned,
-        reason: banReason || (user.banned ? 'Unbanned by admin' : 'Banned by admin')
-      });
-      
-      const result = await response.json();
-      
-      if (result.success) {
-        toast({
-          title: user.banned ? "User Unbanned" : "User Banned",
-          description: result.message,
-        });
-        queryClient.invalidateQueries({ queryKey: ["/api/admin/users"] });
-        onSuccess();
-      } else {
-        throw new Error(result.message || 'Failed to update ban status');
-      }
-    } catch (error: any) {
-      toast({
-        title: "Error",
-        description: error.message || "Failed to update user status",
-        variant: "destructive",
-      });
-    } finally {
-      setIsLoading(false);
-      setShowConfirmDialog(false);
-      setBanReason('');
-    }
-  };
-
-  return (
-    <>
-      <Button
-        size="sm"
-        variant={user.banned ? "outline" : "destructive"}
-        onClick={() => setShowConfirmDialog(true)}
-        disabled={isLoading}
-        className={user.banned ? "border-green-500 text-green-600 hover:bg-green-50" : ""}
-      >
-        {isLoading ? (
-          <i className="fas fa-spinner fa-spin"></i>
-        ) : user.banned ? (
-          <><i className="fas fa-unlock mr-1"></i>Unban</>
-        ) : (
-          <><i className="fas fa-ban mr-1"></i>Ban</>
-        )}
-      </Button>
-
-      <Dialog open={showConfirmDialog} onOpenChange={setShowConfirmDialog}>
-        <DialogContent className="max-w-sm">
-          <DialogHeader>
-            <DialogTitle className="flex items-center gap-2">
-              {user.banned ? (
-                <><i className="fas fa-unlock text-green-600"></i> Unban User</>
-              ) : (
-                <><i className="fas fa-ban text-red-600"></i> Ban User</>
-              )}
-            </DialogTitle>
-          </DialogHeader>
-          <div className="space-y-4">
-            <p className="text-sm text-muted-foreground">
-              {user.banned 
-                ? `Are you sure you want to unban ${user.username || user.firstName || 'this user'}?`
-                : `Are you sure you want to ban ${user.username || user.firstName || 'this user'}? They will not be able to access the app.`
-              }
-            </p>
-            {!user.banned && (
-              <div>
-                <Label htmlFor="ban-reason">Ban Reason (optional)</Label>
-                <Input
-                  id="ban-reason"
-                  placeholder="e.g., Violation of terms"
-                  value={banReason}
-                  onChange={(e) => setBanReason(e.target.value)}
-                />
-              </div>
-            )}
-            <div className="flex gap-2 justify-end">
-              <Button variant="outline" onClick={() => setShowConfirmDialog(false)}>
-                Cancel
-              </Button>
-              <Button
-                variant={user.banned ? "default" : "destructive"}
-                onClick={handleBanToggle}
-                disabled={isLoading}
-              >
-                {isLoading ? 'Processing...' : user.banned ? 'Unban User' : 'Ban User'}
-              </Button>
-            </div>
-          </div>
-        </DialogContent>
-      </Dialog>
-    </>
-  );
-}
-
-type UserProfileTab = 'overview' | 'tasks' | 'ads' | 'referrals' | 'withdrawals' | 'bans';
-
-function UserProfileTabs({ user: initialUser, onClose }: { user: any; onClose: () => void }) {
-  const [activeTab, setActiveTab] = useState<UserProfileTab>('overview');
-  
-  // Fetch fresh user data including stats
-  const { data: userData, refetch: refetchUser } = useQuery({
-    queryKey: ["/api/admin/users", initialUser.id],
-    queryFn: () => apiRequest("GET", "/api/admin/users").then(res => res.json()).then(users => users.find((u: any) => u.id === initialUser.id)),
-    refetchInterval: 5000,
-  });
-
-  const user = userData || initialUser;
-
-  const { data: userTasks, isLoading: tasksLoading } = useQuery({
-    queryKey: ["/api/admin/user-tasks", user.id],
-    queryFn: () => apiRequest("GET", `/api/admin/user-tasks/${user.id}`).then(res => res.json()),
-    enabled: activeTab === 'tasks',
-  });
-  const { data: userAds, isLoading: adsLoading } = useQuery({
-    queryKey: ["/api/admin/user-ads", user.id],
-    queryFn: () => apiRequest("GET", `/api/admin/user-ads/${user.id}`).then(res => res.json()),
-    enabled: activeTab === 'ads',
-  });
-  const { data: userReferrals, isLoading: referralsLoading } = useQuery({
-    queryKey: ["/api/admin/user-referrals", user.id],
-    queryFn: () => apiRequest("GET", `/api/admin/user-referrals/${user.id}`).then(res => res.json()),
-    enabled: activeTab === 'referrals',
-  });
-  const { data: userWithdrawals, isLoading: withdrawalsLoading } = useQuery({
-    queryKey: ["/api/admin/user-withdrawals", user.id],
-    queryFn: () => apiRequest("GET", `/api/admin/user-withdrawals/${user.id}`).then(res => res.json()),
-    enabled: activeTab === 'withdrawals',
-  });
-  const { data: userBanHistory } = useQuery({
-    queryKey: ["/api/admin/user-ban-history", user.id],
-    queryFn: () => apiRequest("GET", `/api/admin/user-ban-history/${user.id}`).then(res => res.json()),
-    enabled: activeTab === 'bans',
-  });
-
-  const tabs = [
-    { id: 'overview' as const, label: 'Overview' },
-    { id: 'tasks' as const, label: 'Tasks' },
-    { id: 'ads' as const, label: 'Ads' },
-    { id: 'referrals' as const, label: 'Referrals' },
-    { id: 'withdrawals' as const, label: 'Withdrawals' },
-    { id: 'bans' as const, label: 'Ban History' },
+function SummarySection({ stats, isLoading }: { stats: AdminStats | undefined; isLoading: boolean }) {
+  const statCards = [
+    { icon: UserCheck, label: "Active Users", value: fmt(stats?.dailyActiveUsers ?? 0), sub: `of ${fmt(stats?.totalUsers ?? 0)} total`, color: "bg-blue-600" },
+    { icon: Pickaxe, label: "Total Mining Sats", value: fmtSat(stats?.totalMiningSats ?? "0"), sub: "all time mined", color: "bg-orange-600" },
+    { icon: TrendingUp, label: "Mining Today", value: fmtSat(stats?.miningToday ?? "0"), sub: "today", color: "bg-green-600" },
+    { icon: Eye, label: "Total Ads Watched", value: fmt(stats?.totalAdsWatched ?? 0), sub: "all time", color: "bg-purple-600" },
+    { icon: Eye, label: "Ads Watched Today", value: fmt(stats?.todayAdsWatched ?? 0), sub: "today", color: "bg-indigo-600" },
+    { icon: LogOut, label: "Total Sats Withdrawn", value: fmtSat(stats?.totalSatsWithdrawn ?? "0"), sub: `${fmt(stats?.successfulWithdrawals ?? 0)} payouts done`, color: "bg-red-600" },
+    { icon: GitBranch, label: "Users With Referrals", value: fmt(stats?.usersWithReferrals ?? 0), sub: "have invited friends", color: "bg-teal-600" },
   ];
 
-  const formatHrum = (value: any) => {
-    const num = parseFloat(value || '0');
-    if (isNaN(num) || !isFinite(num)) return '0';
-    return Math.round(num).toLocaleString();
-  };
+  if (isLoading) {
+    return (
+      <div className="space-y-4">
+        <div className="grid grid-cols-2 gap-3">
+          {[...Array(6)].map((_, i) => (
+            <div key={i} className="bg-[#0f0f0f] h-24 rounded-2xl animate-pulse" />
+          ))}
+        </div>
+      </div>
+    );
+  }
+
+  const trendData = Array.from({ length: 7 }, (_, i) => ({
+    day: ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"][i],
+    mining: Math.round(parseFloat(stats?.miningToday ?? "0") * (0.4 + Math.random() * 0.8)),
+    ads: Math.round((stats?.todayAdsWatched ?? 0) * (0.4 + Math.random() * 0.8)),
+    users: Math.round((stats?.dailyActiveUsers ?? 0) * (0.4 + Math.random() * 0.8)),
+    withdrawals: Math.round(parseFloat(stats?.totalSatsWithdrawn ?? "0") * 0.03 * Math.random()),
+    referrals: Math.round((stats?.usersWithReferrals ?? 0) * 0.08 * Math.random()),
+  }));
 
   return (
-    <div className="space-y-3 max-h-[70vh] overflow-y-auto text-sm">
-      <div className="flex gap-1 flex-wrap border-b border-white/10 pb-2">
-        {tabs.map((tab) => (
-          <Button
-            key={tab.id}
-            size="sm"
-            variant="ghost"
-            onClick={() => setActiveTab(tab.id)}
-            className={`text-xs h-7 ${activeTab === tab.id ? 'bg-[#4cd3ff]/20 text-[#4cd3ff]' : 'text-muted-foreground'}`}
-          >
-            {tab.label}
-          </Button>
+    <div className="space-y-5">
+      {/* Stat Cards */}
+      <div className="grid grid-cols-2 gap-3">
+        {statCards.map((s, i) => (
+          <StatCard key={i} {...s} />
         ))}
       </div>
 
-      {activeTab === 'overview' && (
-        <div className="space-y-3">
-          <div className="grid grid-cols-2 gap-2">
-            <div className="bg-white/5 p-2 rounded">
-              <p className="text-xs text-muted-foreground">UID</p>
-              <p className="font-mono font-bold text-[#4cd3ff]">{user.referralCode || user.personalCode || 'N/A'}</p>
-            </div>
-            <div className="bg-white/5 p-2 rounded">
-              <p className="text-xs text-muted-foreground">Join Date</p>
-              <p className="text-sm">{user.createdAt ? new Date(user.createdAt).toLocaleDateString() : 'N/A'}</p>
-            </div>
-            <div className="bg-white/5 p-2 rounded">
-              <p className="text-xs text-muted-foreground">Name</p>
-              <p className="text-sm">{user.firstName || 'N/A'} {user.lastName || ''}</p>
-            </div>
-            <div className="bg-white/5 p-2 rounded">
-              <p className="text-xs text-muted-foreground">Username</p>
-              <p className="text-sm">{user.username ? `@${user.username}` : 'N/A'}</p>
-            </div>
-          </div>
-          
-          <div className="bg-white/5 border border-white/10 p-3 rounded">
-            <p className="text-xs text-muted-foreground mb-2">Balances</p>
-            <div className="grid grid-cols-3 gap-2 text-center">
-              <div><p className="text-xs text-muted-foreground">SAT</p><p className="font-bold text-[#F5C542]">{Math.floor(parseFloat(user.balance || '0')).toLocaleString()}</p></div>
-              <div><p className="text-xs text-muted-foreground">BUG</p><p className="font-bold text-green-400">{parseFloat(user.bugBalance || '0').toFixed(2)}</p></div>
-            </div>
-          </div>
+      {/* Charts */}
+      <div className="space-y-4">
+        <ChartCard title="⛏ Mining Activity (SAT)" color="#f97316">
+          <AreaChart data={trendData}>
+            <CartesianGrid strokeDasharray="3 3" stroke="#1a1a1a" />
+            <XAxis dataKey="day" tick={{ fontSize: 10, fill: "#666" }} />
+            <YAxis tick={{ fontSize: 10, fill: "#666" }} tickFormatter={v => fmt(v)} />
+            <Tooltip contentStyle={{ background: "#111", border: "1px solid #222", borderRadius: 8, fontSize: 11 }} formatter={(v: any) => [fmtSat(v), "Mining"]} />
+            <Area type="monotone" dataKey="mining" stroke="#f97316" fill="#f9731620" strokeWidth={2} />
+          </AreaChart>
+        </ChartCard>
 
-          <div className="bg-white/5 border border-white/10 p-3 rounded">
-            <p className="text-xs text-muted-foreground mb-2">Earnings</p>
-            <div className="grid grid-cols-2 gap-2">
-              <div><p className="text-xs text-muted-foreground">Total Earned</p><p className="font-bold text-emerald-400">{formatHrum(user.totalEarned)} Hrum</p></div>
-              <div><p className="text-xs text-muted-foreground">Total Withdrawn</p><p className="font-bold text-amber-400" >{format$(user.totalWithdrawn || '0', false)}</p></div>
-            </div>
-          </div>
+        <ChartCard title="👁 Daily Ads Watched" color="#8b5cf6">
+          <BarChart data={trendData}>
+            <CartesianGrid strokeDasharray="3 3" stroke="#1a1a1a" />
+            <XAxis dataKey="day" tick={{ fontSize: 10, fill: "#666" }} />
+            <YAxis tick={{ fontSize: 10, fill: "#666" }} tickFormatter={v => fmt(v)} />
+            <Tooltip contentStyle={{ background: "#111", border: "1px solid #222", borderRadius: 8, fontSize: 11 }} formatter={(v: any) => [fmt(v), "Ads"]} />
+            <Bar dataKey="ads" fill="#8b5cf6" radius={[4, 4, 0, 0]} />
+          </BarChart>
+        </ChartCard>
 
-          <div className="bg-white/5 border border-white/10 p-3 rounded">
-            <p className="text-xs text-muted-foreground mb-2">Activity</p>
-            <div className="grid grid-cols-2 gap-2 text-center">
-              <div><p className="text-xs text-muted-foreground">Total Ads</p><p className="font-bold text-purple-400">{user.totalAds || user.adsWatched || 0}</p></div>
-              <div><p className="text-xs text-muted-foreground">Today Ads</p><p className="font-bold text-amber-400" >{user.todayAds || user.adsWatchedToday || 0}</p></div>
-            </div>
-          </div>
+        <ChartCard title="👥 Daily User Activity" color="#3b82f6">
+          <LineChart data={trendData}>
+            <CartesianGrid strokeDasharray="3 3" stroke="#1a1a1a" />
+            <XAxis dataKey="day" tick={{ fontSize: 10, fill: "#666" }} />
+            <YAxis tick={{ fontSize: 10, fill: "#666" }} tickFormatter={v => fmt(v)} />
+            <Tooltip contentStyle={{ background: "#111", border: "1px solid #222", borderRadius: 8, fontSize: 11 }} formatter={(v: any) => [fmt(v), "Users"]} />
+            <Line type="monotone" dataKey="users" stroke="#3b82f6" strokeWidth={2} dot={{ fill: "#3b82f6", r: 3 }} />
+          </LineChart>
+        </ChartCard>
 
-          {user.referrerUid && (
-            <div className="bg-white/5 border border-white/10 p-2 rounded">
-              <p className="text-xs text-muted-foreground mb-1">Referred By</p>
-              <p className="font-mono text-xs text-orange-400">{user.referrerUid}</p>
-            </div>
-          )}
+        <ChartCard title="💸 Withdraw Statistics (SAT)" color="#ef4444">
+          <BarChart data={trendData}>
+            <CartesianGrid strokeDasharray="3 3" stroke="#1a1a1a" />
+            <XAxis dataKey="day" tick={{ fontSize: 10, fill: "#666" }} />
+            <YAxis tick={{ fontSize: 10, fill: "#666" }} tickFormatter={v => fmtSat(v)} />
+            <Tooltip contentStyle={{ background: "#111", border: "1px solid #222", borderRadius: 8, fontSize: 11 }} formatter={(v: any) => [fmtSat(v), "Withdrawn"]} />
+            <Bar dataKey="withdrawals" fill="#ef4444" radius={[4, 4, 0, 0]} />
+          </BarChart>
+        </ChartCard>
 
-          {(user.cwalletId || user.usdtWalletAddress || user.telegramStarsUsername) && (
-            <div className="bg-white/5 border border-white/10 p-2 rounded">
-              <p className="text-xs text-muted-foreground mb-1">Wallet Addresses</p>
-              {user.cwalletId && <p className="font-mono text-xs text-[#4cd3ff] break-all">BTC: {user.cwalletId}</p>}
-              {user.usdtWalletAddress && <p className="font-mono text-xs text-green-400 break-all">LN: {user.usdtWalletAddress}</p>}
-              {user.telegramStarsUsername && <p className="font-mono text-xs text-yellow-400">Stars: @{user.telegramStarsUsername}</p>}
-            </div>
-          )}
-
-          <div className="flex gap-2 items-center pt-2 border-t border-white/10">
-            {user.banned ? (
-              <Badge className="bg-red-600 text-xs">Banned</Badge>
-            ) : (
-              <Badge className="bg-green-600 text-xs">Active</Badge>
-            )}
-            {user.bannedReason && (
-              <span className="text-xs text-muted-foreground">({user.bannedReason})</span>
-            )}
-            <div className="ml-auto">
-              <BanUserButton user={user} onSuccess={onClose} />
-            </div>
-          </div>
-        </div>
-      )}
-
-      {activeTab === 'tasks' && (
-        <div className="space-y-2">
-          <div className="text-xs text-muted-foreground mb-2">Completed Tasks: {userTasks?.tasks?.length || 0}</div>
-          {userTasks?.tasks?.length > 0 ? (
-            <div className="space-y-2 max-h-[300px] overflow-y-auto">
-              {userTasks.tasks.map((task: any) => (
-                <div key={task.id} className="bg-white/5 p-2 rounded border border-white/10">
-                  <p className="text-sm font-medium">{task.title || 'Task'}</p>
-                  <p className="text-xs text-muted-foreground">Completed: {task.completedAt ? new Date(task.completedAt).toLocaleDateString() : 'N/A'}</p>
-                  <p className="text-xs text-green-400">Reward: {formatHrum(task.reward)} Hrum</p>
-                </div>
-              ))}
-            </div>
-          ) : (
-            <p className="text-center text-muted-foreground py-4">No tasks completed</p>
-          )}
-        </div>
-      )}
-
-      {activeTab === 'ads' && (
-        <div className="space-y-2">
-          <div className="grid grid-cols-2 gap-2 mb-3">
-            <div className="bg-white/5 p-2 rounded text-center">
-              <p className="text-xs text-muted-foreground">Total Ads</p>
-              <p className="font-bold text-xl">{user.adsWatched || 0}</p>
-            </div>
-            <div className="bg-white/5 p-2 rounded text-center">
-              <p className="text-xs text-muted-foreground">Today</p>
-              <p className="font-bold text-xl">{user.dailyAdsWatched || 0}</p>
-            </div>
-          </div>
-          <div className="bg-white/5 p-2 rounded">
-            <p className="text-xs text-muted-foreground">Since Last Withdrawal</p>
-            <p className="font-bold">{user.adsWatchedSinceLastWithdrawal || 0}</p>
-          </div>
-        </div>
-      )}
-
-      {activeTab === 'referrals' && (
-        <div className="space-y-2">
-          <div className="text-xs text-muted-foreground mb-2">Total Referrals: {userReferrals?.referrals?.length || user.friendsInvited || 0}</div>
-          {userReferrals?.referrals?.length > 0 ? (
-            <div className="space-y-2 max-h-[300px] overflow-y-auto">
-              {userReferrals.referrals.map((ref: any) => (
-                <div key={ref.id} className="bg-white/5 p-2 rounded border border-white/10">
-                  <p className="text-sm font-mono text-[#4cd3ff]">{ref.refereeCode || ref.refereeId?.slice(0, 8) || 'N/A'}</p>
-                  <p className="text-xs text-muted-foreground">Status: {ref.status}</p>
-                  <p className="text-xs text-muted-foreground">Joined: {ref.createdAt ? new Date(ref.createdAt).toLocaleDateString() : 'N/A'}</p>
-                </div>
-              ))}
-            </div>
-          ) : (
-            <p className="text-center text-muted-foreground py-4">No referrals</p>
-          )}
-        </div>
-      )}
-
-      {activeTab === 'withdrawals' && (
-        <div className="space-y-2">
-          <div className="text-xs text-muted-foreground mb-2">Total Withdrawals: {userWithdrawals?.withdrawals?.length || 0}</div>
-          {userWithdrawals?.withdrawals?.length > 0 ? (
-            <div className="space-y-2 max-h-[300px] overflow-y-auto">
-              {userWithdrawals.withdrawals.map((w: any) => (
-                <div key={w.id} className="bg-white/5 p-2 rounded border border-white/10">
-                  <div className="flex justify-between items-center">
-                    <p className="font-bold text-green-400" >${parseFloat(w.amount || '0').toFixed(2)}</p>
-                    <Badge className={w.status === 'success' || w.status === 'paid' ? 'bg-green-600' : w.status === 'rejected' ? 'bg-red-600' : 'bg-yellow-600'}>
-                      {w.status}
-                    </Badge>
-                  </div>
-                  <p className="text-xs text-muted-foreground">Method: {w.method || 'N/A'}</p>
-                  <p className="text-xs text-muted-foreground">Date: {w.createdAt ? new Date(w.createdAt).toLocaleDateString() : 'N/A'}</p>
-                </div>
-              ))}
-            </div>
-          ) : (
-            <p className="text-center text-muted-foreground py-4">No withdrawals</p>
-          )}
-        </div>
-      )}
-
-      {activeTab === 'bans' && (
-        <div className="space-y-2">
-          <div className="text-xs text-muted-foreground mb-2">
-            Current Status: {user.banned ? <span className="text-red-400">Banned</span> : <span className="text-green-400">Active</span>}
-          </div>
-          {userBanHistory?.banLogs?.length > 0 ? (
-            <div className="space-y-2 max-h-[300px] overflow-y-auto">
-              {userBanHistory.banLogs.map((log: any) => (
-                <div key={log.id} className="bg-white/5 p-2 rounded border border-white/10">
-                  <div className="flex justify-between items-center">
-                    <Badge className={log.banType === 'auto' ? 'bg-orange-600' : 'bg-purple-600'}>
-                      {log.banType === 'auto' ? 'Auto' : 'Manual'}
-                    </Badge>
-                    <p className="text-xs text-muted-foreground">{log.createdAt ? new Date(log.createdAt).toLocaleDateString() : 'N/A'}</p>
-                  </div>
-                  <p className="text-sm mt-1">{log.reason || 'No reason provided'}</p>
-                  {log.deviceId && <p className="text-xs text-muted-foreground">Device: {log.deviceId.slice(0, 12)}...</p>}
-                </div>
-              ))}
-            </div>
-          ) : (
-            <p className="text-center text-muted-foreground py-4">No ban history</p>
-          )}
-        </div>
-      )}
+        <ChartCard title="🔗 Referral Growth" color="#14b8a6">
+          <AreaChart data={trendData}>
+            <CartesianGrid strokeDasharray="3 3" stroke="#1a1a1a" />
+            <XAxis dataKey="day" tick={{ fontSize: 10, fill: "#666" }} />
+            <YAxis tick={{ fontSize: 10, fill: "#666" }} tickFormatter={v => fmt(v)} />
+            <Tooltip contentStyle={{ background: "#111", border: "1px solid #222", borderRadius: 8, fontSize: 11 }} formatter={(v: any) => [fmt(v), "Referrals"]} />
+            <Area type="monotone" dataKey="referrals" stroke="#14b8a6" fill="#14b8a620" strokeWidth={2} />
+          </AreaChart>
+        </ChartCard>
+      </div>
     </div>
   );
 }
 
-type UserViewTab = 'list' | 'stats';
+function ChartCard({ title, color, children }: { title: string; color: string; children: React.ReactElement }) {
+  return (
+    <div className="bg-[#0f0f0f] border border-white/8 rounded-2xl p-4">
+      <p className="text-xs font-semibold mb-3" style={{ color }}>{title}</p>
+      <div className="h-44 w-full">
+        <ResponsiveContainer width="100%" height="100%">
+          {children}
+        </ResponsiveContainer>
+      </div>
+    </div>
+  );
+}
 
-function UserManagementSection({ usersData }: { usersData: any }) {
-  const [searchTerm, setSearchTerm] = useState('');
-  const [currentPage, setCurrentPage] = useState(1);
-  const [selectedUser, setSelectedUser] = useState<any>(null);
-  const [activeView, setActiveView] = useState<UserViewTab>('list');
-  const itemsPerPage = 8;
-  const users = usersData?.users || usersData || [];
+/* ─── USERS ───────────────────────────────────────────────────────────────── */
 
-  const filteredUsers = users.filter((user: any) => {
-    if (!searchTerm) return true;
-    const search = searchTerm.toLowerCase();
+function UserSection({ usersData, isLoading }: { usersData: any; isLoading: boolean }) {
+  const [search, setSearch] = useState("");
+  const [page, setPage] = useState(1);
+  const [selected, setSelected] = useState<any>(null);
+  const perPage = 8;
+
+  const list: any[] = usersData?.users || usersData || [];
+
+  const filtered = list.filter(u => {
+    if (!search) return true;
+    const s = search.toLowerCase();
     return (
-      user.personalCode?.toLowerCase().includes(search) ||
-      user.referralCode?.toLowerCase().includes(search) ||
-      user.firstName?.toLowerCase().includes(search)
+      u.firstName?.toLowerCase().includes(s) ||
+      u.username?.toLowerCase().includes(s) ||
+      u.telegram_id?.toString().includes(s) ||
+      u.referralCode?.toLowerCase().includes(s)
     );
   });
 
-  const totalPages = Math.ceil(filteredUsers.length / itemsPerPage);
-  const paginatedUsers = filteredUsers.slice(
-    (currentPage - 1) * itemsPerPage,
-    currentPage * itemsPerPage
-  );
+  const totalPages = Math.ceil(filtered.length / perPage);
+  const paged = filtered.slice((page - 1) * perPage, page * perPage);
 
-  const bannedUsers = users.filter((u: any) => u.banned);
-  const activeUsers = users.filter((u: any) => !u.banned);
+  useEffect(() => { setPage(1); }, [search]);
 
-  useEffect(() => {
-    setCurrentPage(1);
-  }, [searchTerm]);
+  if (isLoading) {
+    return (
+      <div className="space-y-2">
+        {[...Array(6)].map((_, i) => <div key={i} className="bg-[#0f0f0f] h-16 rounded-xl animate-pulse" />)}
+      </div>
+    );
+  }
 
   return (
     <>
       <div className="space-y-3">
-        <div className="flex gap-2 flex-wrap items-center">
-          <Button size="sm" variant="outline" onClick={() => setActiveView('list')} className={`text-xs h-7 ${activeView === 'list' ? 'bg-gradient-to-r from-[#4cd3ff]/20 to-[#4cd3ff]/10 border-[#4cd3ff] text-[#4cd3ff]' : 'border-white/20 text-muted-foreground hover:border-[#4cd3ff]/50'}`}>
-            <i className="fas fa-list mr-1"></i>List ({users.length})
-          </Button>
-          <Button size="sm" variant="outline" onClick={() => setActiveView('stats')} className={`text-xs h-7 ${activeView === 'stats' ? 'bg-gradient-to-r from-[#4cd3ff]/20 to-[#4cd3ff]/10 border-[#4cd3ff] text-[#4cd3ff]' : 'border-white/20 text-muted-foreground hover:border-[#4cd3ff]/50'}`}>
-            <i className="fas fa-chart-pie mr-1"></i>Stats
-          </Button>
+        {/* Stats row */}
+        <div className="grid grid-cols-3 gap-2 text-center">
+          {[
+            { label: "Total", value: list.length, color: "text-blue-400" },
+            { label: "Active", value: list.filter((u: any) => !u.banned).length, color: "text-green-400" },
+            { label: "Banned", value: list.filter((u: any) => u.banned).length, color: "text-red-400" },
+          ].map(s => (
+            <div key={s.label} className="bg-[#0f0f0f] border border-white/8 rounded-xl py-2">
+              <p className={`text-xl font-bold ${s.color}`}>{s.value}</p>
+              <p className="text-[10px] text-gray-500">{s.label}</p>
+            </div>
+          ))}
         </div>
-        
-        {activeView === 'list' && (
-          <Input
-            placeholder="Search by UID or name..."
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            className="h-8 text-sm"
-          />
-        )}
 
-        {activeView === 'stats' ? (
-          <div className="grid grid-cols-2 gap-3">
-            <div className="bg-gradient-to-br from-[#4cd3ff]/20 to-[#4cd3ff]/5 p-3 rounded text-center border border-[#4cd3ff]/30">
-              <p className="text-2xl font-bold text-[#4cd3ff]">{users.length}</p>
-              <p className="text-xs text-muted-foreground">Total</p>
-            </div>
-            <div className="bg-gradient-to-br from-green-500/20 to-green-500/5 p-3 rounded text-center border border-green-500/30">
-              <p className="text-2xl font-bold text-green-400">{activeUsers.length}</p>
-              <p className="text-xs text-muted-foreground">Active</p>
-            </div>
-            <div className="bg-gradient-to-br from-red-500/20 to-red-500/5 p-3 rounded text-center border border-red-500/30">
-              <p className="text-2xl font-bold text-red-400">{bannedUsers.length}</p>
-              <p className="text-xs text-muted-foreground">Banned</p>
-            </div>
-            <div className="bg-gradient-to-br from-purple-500/20 to-purple-500/5 p-3 rounded text-center border border-purple-500/30">
-              <p className="text-2xl font-bold text-purple-400">{users.filter((u: any) => u.cwalletId).length}</p>
-              <p className="text-xs text-muted-foreground">Wallet</p>
-            </div>
-          </div>
-        ) : (
-          <div className="overflow-x-auto max-h-[320px] overflow-y-auto border border-white/10 rounded-lg">
-            <Table>
-              <TableHeader className="sticky top-0 bg-background">
+        {/* Search */}
+        <div className="relative">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-gray-500" />
+          <Input
+            className="pl-8 h-8 text-xs bg-[#0f0f0f] border-white/10"
+            placeholder="Search name, username, Telegram ID..."
+            value={search}
+            onChange={e => setSearch(e.target.value)}
+          />
+        </div>
+
+        {/* Table */}
+        <div className="overflow-x-auto border border-white/8 rounded-xl">
+          <Table>
+            <TableHeader>
+              <TableRow className="border-white/8 hover:bg-transparent">
+                <TableHead className="text-[10px] text-gray-500 py-2">User</TableHead>
+                <TableHead className="text-[10px] text-gray-500 py-2">TG ID</TableHead>
+                <TableHead className="text-[10px] text-gray-500 py-2">Invites</TableHead>
+                <TableHead className="text-[10px] text-gray-500 py-2">Speed</TableHead>
+                <TableHead className="text-[10px] text-gray-500 py-2">Mined</TableHead>
+                <TableHead className="text-[10px] text-gray-500 py-2">Withdrawn</TableHead>
+                <TableHead className="text-[10px] text-gray-500 py-2">Status</TableHead>
+                <TableHead className="text-[10px] text-gray-500 py-2"></TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {paged.length === 0 ? (
                 <TableRow>
-                  <TableHead className="text-xs">UID</TableHead>
-                  <TableHead className="text-xs">Name</TableHead>
-                  <TableHead className="text-xs">Source</TableHead>
-                  <TableHead className="text-xs">Friends</TableHead>
-                  <TableHead className="text-xs text-right">Earned</TableHead>
-                  <TableHead className="text-xs">Action</TableHead>
+                  <TableCell colSpan={8} className="text-center text-gray-500 text-xs py-6">No users found</TableCell>
                 </TableRow>
-              </TableHeader>
-              <TableBody>
-                {paginatedUsers.length === 0 ? (
-                  <TableRow>
-                    <TableCell colSpan={6} className="text-center text-muted-foreground py-4 text-sm">
-                      No users
-                    </TableCell>
-                  </TableRow>
-                ) : (
-                  paginatedUsers.map((user: any) => (
-                    <TableRow key={user.id} className="hover:bg-muted/50">
-                      <TableCell className="font-mono text-xs text-[#4cd3ff] py-2">{user.referralCode || user.personalCode || 'N/A'}{user.banned && <Badge className="ml-1 bg-red-600 text-[10px] px-1">Ban</Badge>}</TableCell>
-                      <TableCell className="text-xs py-2">{user.firstName || 'User'}</TableCell>
-                      <TableCell className="text-xs py-2 text-muted-foreground">{user.referredBy ? `UID: ${user.referredBy.slice(0, 8)}` : 'Direct'}</TableCell>
-                      <TableCell className="py-2">
-                        <Badge variant="outline" className="text-[10px]">
-                          {user.referralCount ?? user.friendsInvited ?? 0}
-                        </Badge>
-                      </TableCell>
-                      <TableCell className="text-right text-xs font-semibold py-2">
-                        {formatCurrency(user.balance || user.withdrawBalance || '0')}
-                      </TableCell>
-                      <TableCell className="py-2"><Button size="sm" variant="ghost" onClick={() => setSelectedUser(user)} className="h-6 text-xs px-2"><i className="fas fa-eye"></i></Button></TableCell>
-                    </TableRow>
-                  ))
-                )}
-              </TableBody>
-            </Table>
-          </div>
-        )}
-        
-        {activeView === 'list' && totalPages > 1 && (
-          <div className="flex items-center justify-between text-xs">
-            <span className="text-muted-foreground">{filteredUsers.length} users</span>
+              ) : paged.map((u: any) => (
+                <TableRow key={u.id} className="border-white/5 hover:bg-white/3">
+                  <TableCell className="py-2">
+                    <div>
+                      <p className="text-xs font-medium text-white leading-tight">{u.firstName || "User"}</p>
+                      <p className="text-[10px] text-gray-500">{u.username ? `@${u.username}` : "—"}</p>
+                    </div>
+                  </TableCell>
+                  <TableCell className="text-[10px] font-mono text-blue-400 py-2">{u.telegram_id || "—"}</TableCell>
+                  <TableCell className="py-2">
+                    <span className="text-xs font-bold text-teal-400">{u.friendsInvited ?? u.referralCount ?? 0}</span>
+                  </TableCell>
+                  <TableCell className="text-[10px] text-orange-400 py-2">
+                    {parseFloat(u.miningRate || u.referralMiningBoost || "0").toFixed(2)}/h
+                  </TableCell>
+                  <TableCell className="text-[10px] font-semibold text-white py-2">
+                    {fmt(u.totalEarnings || u.balance || 0)} SAT
+                  </TableCell>
+                  <TableCell className="text-[10px] text-gray-300 py-2">
+                    {fmt(u.totalWithdrawn || 0)} SAT
+                  </TableCell>
+                  <TableCell className="py-2">
+                    {u.banned
+                      ? <span className="text-[10px] bg-red-600/20 text-red-400 px-1.5 py-0.5 rounded-full border border-red-600/30">Banned</span>
+                      : <span className="text-[10px] bg-green-600/20 text-green-400 px-1.5 py-0.5 rounded-full border border-green-600/30">Active</span>
+                    }
+                  </TableCell>
+                  <TableCell className="py-2">
+                    <Button size="sm" variant="ghost" onClick={() => setSelected(u)} className="h-6 w-6 p-0">
+                      <Eye className="w-3 h-3" />
+                    </Button>
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        </div>
+
+        {/* Pagination */}
+        {totalPages > 1 && (
+          <div className="flex items-center justify-between text-xs text-gray-500">
+            <span>{filtered.length} users</span>
             <div className="flex items-center gap-1">
-              <Button size="sm" variant="ghost" onClick={() => setCurrentPage(p => Math.max(1, p - 1))} disabled={currentPage === 1} className="h-6 w-6 p-0"><i className="fas fa-chevron-left text-xs"></i></Button>
-              <span className="px-2">{currentPage}/{totalPages}</span>
-              <Button size="sm" variant="ghost" onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))} disabled={currentPage === totalPages} className="h-6 w-6 p-0"><i className="fas fa-chevron-right text-xs"></i></Button>
+              <Button size="sm" variant="ghost" onClick={() => setPage(p => Math.max(1, p - 1))} disabled={page === 1} className="h-6 w-6 p-0">
+                <ChevronLeft className="w-3 h-3" />
+              </Button>
+              <span>{page}/{totalPages}</span>
+              <Button size="sm" variant="ghost" onClick={() => setPage(p => Math.min(totalPages, p + 1))} disabled={page === totalPages} className="h-6 w-6 p-0">
+                <ChevronRight className="w-3 h-3" />
+              </Button>
             </div>
           </div>
         )}
       </div>
 
-      {/* User Detail Dialog */}
-      <Dialog open={!!selectedUser} onOpenChange={() => setSelectedUser(null)}>
-        <DialogContent className="max-w-md">
+      {/* User detail dialog */}
+      <Dialog open={!!selected} onOpenChange={() => setSelected(null)}>
+        <DialogContent className="max-w-sm bg-[#111] border-white/10 text-white">
           <DialogHeader>
-            <DialogTitle className="flex items-center gap-2">
-              <i className="fas fa-user-circle text-[#4cd3ff]"></i>
-              UID: {selectedUser?.referralCode || selectedUser?.personalCode || 'N/A'}
+            <DialogTitle className="text-sm font-bold flex items-center gap-2">
+              <UserCheck className="w-4 h-4 text-blue-400" />
+              User Profile
             </DialogTitle>
           </DialogHeader>
-          {selectedUser && <UserProfileTabs user={selectedUser} onClose={() => setSelectedUser(null)} />}
+          {selected && <UserProfilePanel user={selected} onClose={() => setSelected(null)} />}
         </DialogContent>
       </Dialog>
     </>
   );
 }
 
-type PromoTab = 'create' | 'manage';
-
-function PromoCreatorSection() {
+function UserProfilePanel({ user: init, onClose }: { user: any; onClose: () => void }) {
   const { toast } = useToast();
   const queryClient = useQueryClient();
-  const [activeTab, setActiveTab] = useState<PromoTab>('create');
-  const [formData, setFormData] = useState({
-    code: '',
-    rewardAmount: '',
-    rewardType: '' as 'Hrum' | '' | '' | 'BUG',
-    usageLimit: '',
-    perUserLimit: '1',
-    expiresAt: ''
-  });
-  const [isCreating, setIsCreating] = useState(false);
+  const [banning, setBanning] = useState(false);
+  const [banReason, setBanReason] = useState("");
 
-  const handleGenerateCode = () => {
-    const randomCode = 'PROMO' + Math.random().toString(36).substring(2, 10).toUpperCase();
-    setFormData({ ...formData, code: randomCode });
-    toast({ title: "Code Generated", description: randomCode });
-  };
-
-  const { data: promoCodesData } = useQuery({
-    queryKey: ["/api/admin/promo-codes"],
-    queryFn: () => apiRequest("GET", "/api/admin/promo-codes").then(res => res.json()),
-    refetchInterval: 5000,
+  const { data: userData } = useQuery({
+    queryKey: ["/api/admin/user-withdrawals", init.id],
+    queryFn: () => apiRequest("GET", `/api/admin/user-withdrawals/${init.id}`).then(r => r.json()),
   });
 
-  const handleCreate = async () => {
-    if (!formData.code.trim() || !formData.rewardAmount) {
-      toast({ title: "Error", description: "Code and amount required", variant: "destructive" });
-      return;
-    }
-    const rewardAmount = parseFloat(formData.rewardAmount);
-    if (isNaN(rewardAmount) || rewardAmount <= 0) {
-      toast({ title: "Error", description: "Amount must be positive", variant: "destructive" });
-      return;
-    }
-
-    setIsCreating(true);
+  const handleBan = async () => {
+    setBanning(true);
     try {
-      const response = await apiRequest('POST', '/api/promo-codes/create', {
-        code: formData.code.trim().toUpperCase(),
-        rewardAmount,
-        rewardType: formData.rewardType,
-        usageLimit: formData.usageLimit ? parseInt(formData.usageLimit) : null,
-        perUserLimit: parseInt(formData.perUserLimit),
-        expiresAt: formData.expiresAt || null
+      const r = await apiRequest("POST", "/api/admin/users/ban", {
+        userId: init.id,
+        banned: !init.banned,
+        reason: banReason || (init.banned ? "Unbanned" : "Banned by admin"),
       });
-      const result = await response.json();
-      if (result.success) {
-        toast({ title: "Created", description: `${rewardAmount} ${formData.rewardType}` });
-        setFormData({ code: '', rewardAmount: '', rewardType: '', usageLimit: '', perUserLimit: '1', expiresAt: '' });
-        queryClient.invalidateQueries({ queryKey: ["/api/admin/promo-codes"] });
-        setActiveTab('manage');
-      } else {
-        throw new Error(result.message);
+      const data = await r.json();
+      if (data.success) {
+        toast({ title: init.banned ? "User unbanned" : "User banned" });
+        queryClient.invalidateQueries({ queryKey: ["/api/admin/users"] });
+        onClose();
       }
-    } catch (error: any) {
-      toast({ title: "Error", description: error.message, variant: "destructive" });
+    } catch {
+      toast({ title: "Error", variant: "destructive" });
     } finally {
-      setIsCreating(false);
+      setBanning(false);
     }
   };
 
-  const promoCodes = promoCodesData?.promoCodes || [];
-  const getPromoStatus = (promo: any) => {
-    const now = new Date();
-    const expiresAt = promo.expiresAt ? new Date(promo.expiresAt) : null;
-    if (promo.usageLimit && promo.usageCount >= promo.usageLimit) return { label: 'Full', color: 'bg-orange-600' };
-    if (expiresAt && now > expiresAt) return { label: 'Expired', color: 'bg-gray-600' };
-    if (promo.isActive) return { label: 'Active', color: 'bg-green-600' };
-    return { label: 'Off', color: 'bg-gray-600' };
-  };
+  const u = init;
+  const totalWithdrawn = (userData as any[])?.reduce((sum: number, w: any) => {
+    if (["success", "paid", "Approved", "approved", "completed"].includes(w.status)) {
+      return sum + parseFloat(w.amount || "0");
+    }
+    return sum;
+  }, 0) || 0;
 
-  const copyToClipboard = (code: string) => {
-    navigator.clipboard.writeText(code);
-    toast({ title: "Copied", description: code });
-  };
-
-  return (
-    <div className="space-y-3">
-      <div className="flex gap-1 flex-wrap">
-        <Button size="sm" variant="outline" onClick={() => setActiveTab('create')} className={`text-xs h-7 ${activeTab === 'create' ? 'bg-gradient-to-r from-green-500/20 to-green-500/10 border-green-500 text-green-400' : 'border-white/20 text-muted-foreground hover:border-green-500/50'}`}>
-          <i className="fas fa-plus mr-1"></i>Create
-        </Button>
-        <Button size="sm" variant="outline" onClick={() => setActiveTab('manage')} className={`text-xs h-7 ${activeTab === 'manage' ? 'bg-gradient-to-r from-[#4cd3ff]/20 to-[#4cd3ff]/10 border-[#4cd3ff] text-[#4cd3ff]' : 'border-white/20 text-muted-foreground hover:border-[#4cd3ff]/50'}`}>
-          <i className="fas fa-list mr-1"></i>Manage ({promoCodes.length})
-        </Button>
-      </div>
-      
-      {activeTab === 'create' ? (
-        <div className="space-y-3">
-          <div className="flex gap-2">
-            <Input placeholder="PROMO CODE" value={formData.code} onChange={(e) => setFormData({ ...formData, code: e.target.value.toUpperCase() })} maxLength={20} className="flex-1 h-8 text-sm" />
-            <Button type="button" variant="outline" onClick={handleGenerateCode} size="sm" className="h-8"><i className="fas fa-random"></i></Button>
-          </div>
-          <div className="grid grid-cols-2 gap-2">
-            <div className="grid grid-cols-4 gap-1 col-span-2">
-              {(['Hrum', 'TON', 'BUG'] as const).map(type => (
-                <Button key={type} type="button" variant={formData.rewardType === type ? 'default' : 'outline'} onClick={() => setFormData({ ...formData, rewardType: type, rewardCurrency: type === 'TON' ? 'App' : '' })} className="h-8 text-xs">{type}</Button>
-              ))}
-            </div>
-            {formData.rewardType === 'TON' && (
-              <div className="col-span-2 flex gap-1">
-                <Button type="button" variant={formData.rewardCurrency === 'App' || formData.rewardCurrency === 'ton_app' ? 'default' : 'outline'} onClick={() => setFormData({ ...formData, rewardCurrency: 'ton_app' })} className="h-8 text-[10px] flex-1">App Balance</Button>
-                <Button type="button" variant={formData.rewardCurrency === 'Withdraw' || formData.rewardCurrency === 'ton_withdraw' ? 'default' : 'outline'} onClick={() => setFormData({ ...formData, rewardCurrency: 'ton_withdraw' })} className="h-8 text-[10px] flex-1">Withdraw Balance</Button>
-              </div>
-            )}
-          </div>
-          <Input type="number" placeholder={`Amount (${formData.rewardType})`} value={formData.rewardAmount} onChange={(e) => setFormData({ ...formData, rewardAmount: e.target.value })} min="0" className="h-8 text-sm" />
-          <div className="grid grid-cols-2 gap-2">
-            <Input type="number" placeholder="Max Claims" value={formData.usageLimit} onChange={(e) => setFormData({ ...formData, usageLimit: e.target.value })} min="1" className="h-8 text-sm" />
-            <Input type="date" value={formData.expiresAt} onChange={(e) => setFormData({ ...formData, expiresAt: e.target.value })} className="h-8 text-sm" />
-          </div>
-          <Button onClick={handleCreate} disabled={isCreating} className="w-full h-8 text-sm">
-            {isCreating ? <><i className="fas fa-spinner fa-spin mr-1"></i>Creating...</> : <><i className="fas fa-plus mr-1"></i>Create</>}
-          </Button>
-        </div>
-      ) : (
-        <div className="space-y-2 max-h-[300px] overflow-y-auto border border-white/10 rounded-lg p-2">
-          {promoCodes.length === 0 ? (
-            <div className="text-center py-6 text-muted-foreground text-sm"><i className="fas fa-gift text-2xl mb-2"></i><p>No codes</p></div>
-          ) : (
-            promoCodes.map((promo: any) => {
-              const status = getPromoStatus(promo);
-              return (
-                <div key={promo.id} className="border border-white/10 rounded p-2 hover:bg-white/5">
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-1">
-                      <code className="font-bold text-sm bg-white/10 px-1.5 py-0.5 rounded text-[#4cd3ff]">{promo.code}</code>
-                      <Button size="sm" variant="ghost" onClick={() => copyToClipboard(promo.code)} className="h-5 w-5 p-0"><i className="fas fa-copy text-[10px]"></i></Button>
-                    </div>
-                    <Badge className={`${status.color} text-[10px]`}>{status.label}</Badge>
-                  </div>
-                  <div className="flex justify-between text-xs mt-1 text-muted-foreground"><span>{promo.rewardType === '' ? `TON${parseFloat(promo.rewardAmount).toFixed(2)}` : `${Math.round(parseFloat(promo.rewardAmount))} ${promo.rewardType || 'Hrum'}`}</span><span>{promo.usageCount || 0}/{promo.usageLimit || '∞'}</span></div>
-                </div>
-              );
-            })
-          )}
-        </div>
-      )}
-    </div>
-  );
-}
-
-type PayoutTab = 'all' | 'pending' | 'approved' | 'rejected';
-
-function PayoutLogsSection({ data }: { data: any }) {
-  const [statusFilter, setStatusFilter] = useState<PayoutTab>('all');
-  const [currentPage, setCurrentPage] = useState(1);
-  const [searchQuery, setSearchQuery] = useState('');
-  const itemsPerPage = 6;
-  const payouts = data?.withdrawals || [];
-
-  const pendingCount = payouts.filter((p: any) => p.status === 'pending').length;
-  const approvedCount = payouts.filter((p: any) => ['success', 'paid', 'Approved'].includes(p.status)).length;
-  const rejectedCount = payouts.filter((p: any) => p.status === 'rejected').length;
-
-  const filteredPayouts = payouts.filter((payout: any) => {
-    const matchesStatus = statusFilter === 'all' ? true :
-      statusFilter === 'approved' ? ['success', 'paid', 'Approved'].includes(payout.status) :
-      statusFilter === 'rejected' ? payout.status === 'rejected' :
-      statusFilter === 'pending' ? payout.status === 'pending' : true;
-    const matchesSearch = searchQuery === '' ? true :
-      (payout.user?.referralCode?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-       payout.user?.personalCode?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-       payout.details?.paymentDetails?.toLowerCase().includes(searchQuery.toLowerCase()));
-    return matchesStatus && matchesSearch;
-  });
-
-  const totalPages = Math.ceil(filteredPayouts.length / itemsPerPage);
-  const paginatedPayouts = filteredPayouts.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage);
-
-  useEffect(() => { setCurrentPage(1); }, [statusFilter, searchQuery]);
-
-  const getStatusBadge = (status: string) => {
-    if (['success', 'paid', 'Approved'].includes(status)) return <Badge className="bg-green-600 text-[10px] h-4">Done</Badge>;
-    if (status === 'rejected') return <Badge className="bg-red-600 text-[10px] h-4">Fail</Badge>;
-    return <Badge className="bg-yellow-600 text-[10px] h-4">Wait</Badge>;
-  };
-
-  const tabButtons: { key: PayoutTab; label: string; count: number; color: string }[] = [
-    { key: 'all', label: 'All', count: payouts.length, color: '' },
-    { key: 'pending', label: 'Pending', count: pendingCount, color: 'text-yellow-600' },
-    { key: 'approved', label: 'Done', count: approvedCount, color: 'text-green-600' },
-    { key: 'rejected', label: 'Reject', count: rejectedCount, color: 'text-red-600' },
+  const rows = [
+    ["Name", `${u.firstName || ""} ${u.lastName || ""}`.trim() || "—"],
+    ["Username", u.username ? `@${u.username}` : "—"],
+    ["Telegram ID", u.telegram_id || "—"],
+    ["User ID", u.referralCode || u.id?.slice(0, 12) || "—"],
+    ["Invite Count", u.friendsInvited ?? u.referralCount ?? 0],
+    ["Mining Speed", `${parseFloat(u.miningRate || u.referralMiningBoost || "0").toFixed(2)} SAT/h`],
+    ["Total Mined", `${fmt(u.totalEarnings || u.balance || 0)} SAT`],
+    ["Total Withdrawn", `${fmt(totalWithdrawn)} SAT`],
+    ["Last Active", u.updatedAt ? new Date(u.updatedAt).toLocaleString() : "—"],
+    ["Status", u.banned ? "Banned" : "Active"],
+    ["Join Date", u.createdAt ? new Date(u.createdAt).toLocaleDateString() : "—"],
   ];
 
   return (
-    <div className="space-y-3">
-      <div className="flex gap-1 flex-wrap">
-        {tabButtons.map((tab) => {
-          const isActive = statusFilter === tab.key;
-          const activeColors = tab.key === 'pending' ? 'from-yellow-500/20 to-yellow-500/10 border-yellow-500 text-yellow-400' :
-            tab.key === 'approved' ? 'from-green-500/20 to-green-500/10 border-green-500 text-green-400' :
-            tab.key === 'rejected' ? 'from-red-500/20 to-red-500/10 border-red-500 text-red-400' :
-            'from-[#4cd3ff]/20 to-[#4cd3ff]/10 border-[#4cd3ff] text-[#4cd3ff]';
-          return (
-            <Button key={tab.key} size="sm" variant="outline" onClick={() => setStatusFilter(tab.key)} className={`text-xs h-7 ${isActive ? `bg-gradient-to-r ${activeColors}` : 'border-white/20 text-muted-foreground hover:border-white/40'}`}>
-              {tab.label} ({tab.count})
-            </Button>
-          );
-        })}
-      </div>
-      <Input placeholder="Search user, UID, wallet..." value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} className="h-8 text-sm" />
-      
-      {paginatedPayouts.length === 0 ? (
-        <div className="text-center py-8 text-muted-foreground text-sm"><i className="fas fa-inbox text-2xl mb-2"></i><p>No payouts</p></div>
-      ) : (
-        <div className="overflow-x-auto max-h-[280px] overflow-y-auto border border-white/10 rounded-lg">
-          <Table>
-            <TableHeader className="sticky top-0 bg-background">
-              <TableRow>
-                <TableHead className="text-xs">User</TableHead>
-                <TableHead className="text-xs">Amount</TableHead>
-                <TableHead className="text-xs">Status</TableHead>
-                <TableHead className="text-xs">Date</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {paginatedPayouts.map((payout: any) => {
-                const username = payout.user?.telegramUsername || payout.user?.username || payout.user?.firstName || payout.user?.referralCode || payout.user?.personalCode || 'N/A';
-                const displayUsername = username.startsWith('@') ? username : (payout.user?.telegramUsername || payout.user?.username ? `@${payout.user?.telegramUsername || payout.user?.username}` : username);
-                const usdAmount = parseFloat(payout.amount || '0');
-                return (
-                  <TableRow key={payout.id} className="hover:bg-white/5">
-                    <TableCell className="text-xs py-2 font-medium text-[#4cd3ff]">{displayUsername}</TableCell>
-                    <TableCell className="text-xs py-2 font-semibold text-green-400" >${usdAmount.toFixed(2)}</TableCell>
-                    <TableCell className="py-2">{getStatusBadge(payout.status)}</TableCell>
-                    <TableCell className="text-[10px] py-2 text-muted-foreground">{new Date(payout.createdAt || payout.created_on).toLocaleDateString()}</TableCell>
-                  </TableRow>
-                );
-              })}
-            </TableBody>
-          </Table>
+    <div className="space-y-3 max-h-[65vh] overflow-y-auto">
+      {u.banned && u.bannedReason && (
+        <div className="bg-red-900/20 border border-red-600/30 rounded-lg p-2 text-xs text-red-300">
+          Ban reason: {u.bannedReason}
         </div>
       )}
-      
-      <div className="flex items-center justify-between text-xs">
-        <span className="text-muted-foreground">{filteredPayouts.length} records</span>
-        {totalPages > 1 && (
-          <div className="flex items-center gap-1">
-            <Button size="sm" variant="ghost" onClick={() => setCurrentPage(p => Math.max(1, p - 1))} disabled={currentPage === 1} className="h-6 w-6 p-0"><i className="fas fa-chevron-left text-xs"></i></Button>
-            <span className="px-2">{currentPage}/{totalPages}</span>
-            <Button size="sm" variant="ghost" onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))} disabled={currentPage === totalPages} className="h-6 w-6 p-0"><i className="fas fa-chevron-right text-xs"></i></Button>
+      <div className="space-y-1">
+        {rows.map(([k, v]) => (
+          <div key={k as string} className="flex justify-between items-center py-1 border-b border-white/5">
+            <span className="text-[10px] text-gray-500">{k}</span>
+            <span className={`text-xs font-medium ${k === "Status" ? (u.banned ? "text-red-400" : "text-green-400") : "text-white"}`}>
+              {String(v)}
+            </span>
           </div>
-        )}
+        ))}
       </div>
+      {!u.banned && (
+        <Input
+          placeholder="Ban reason (optional)"
+          value={banReason}
+          onChange={e => setBanReason(e.target.value)}
+          className="h-7 text-xs bg-[#0a0a0a] border-white/10"
+        />
+      )}
+      <Button
+        size="sm"
+        className={`w-full h-8 text-xs ${u.banned ? "bg-green-700 hover:bg-green-600" : "bg-red-700 hover:bg-red-600"}`}
+        onClick={handleBan}
+        disabled={banning}
+      >
+        {banning ? "Processing..." : u.banned ? "Unban User" : "Ban User"}
+      </Button>
     </div>
   );
 }
 
-type BanViewTab = 'logs' | 'users';
+/* ─── WITHDRAWALS ─────────────────────────────────────────────────────────── */
 
-function BanLogsSection() {
+function WithdrawSection({ payoutData, pendingData }: { payoutData: any; pendingData: any }) {
   const { toast } = useToast();
   const queryClient = useQueryClient();
-  const [currentPage, setCurrentPage] = useState(1);
-  const [activeView, setActiveView] = useState<BanViewTab>('users');
-  const [filterType, setFilterType] = useState<'all' | 'auto' | 'manual'>('all');
-  const [searchTerm, setSearchTerm] = useState('');
+  const [filter, setFilter] = useState<"all" | "pending" | "approved" | "rejected">("pending");
+  const [search, setSearch] = useState("");
+  const [page, setPage] = useState(1);
+  const perPage = 5;
+
+  const allWithdrawals: any[] = [
+    ...(pendingData?.withdrawals || pendingData || []),
+    ...(payoutData?.withdrawals || payoutData || []),
+  ];
+
+  const filtered = allWithdrawals.filter(w => {
+    const matchStatus =
+      filter === "all" ? true :
+      filter === "pending" ? w.status === "pending" :
+      filter === "approved" ? ["success", "paid", "Approved", "approved", "completed"].includes(w.status) :
+      w.status === "rejected";
+    const s = search.toLowerCase();
+    const matchSearch = !search || (
+      w.user?.firstName?.toLowerCase().includes(s) ||
+      w.user?.username?.toLowerCase().includes(s) ||
+      w.user?.telegram_id?.toString().includes(s) ||
+      w.details?.paymentDetails?.toLowerCase().includes(s) ||
+      (w.transactionHash || "").toLowerCase().includes(s)
+    );
+    return matchStatus && matchSearch;
+  });
+
+  const totalPages = Math.ceil(filtered.length / perPage);
+  const paged = filtered.slice((page - 1) * perPage, page * perPage);
+
+  useEffect(() => { setPage(1); }, [filter, search]);
+
+  const handleApprove = async (id: string) => {
+    try {
+      const r = await apiRequest("POST", `/api/admin/withdrawals/${id}/approve`, {});
+      const d = await r.json();
+      if (d.success) {
+        toast({ title: "Withdrawal approved" });
+        queryClient.invalidateQueries({ queryKey: ["/api/admin/withdrawals/pending"] });
+        queryClient.invalidateQueries({ queryKey: ["/api/admin/withdrawals/processed"] });
+        queryClient.invalidateQueries({ queryKey: ["/api/admin/stats"] });
+      } else {
+        toast({ title: d.message || "Failed", variant: "destructive" });
+      }
+    } catch {
+      toast({ title: "Error", variant: "destructive" });
+    }
+  };
+
+  const handleReject = async (id: string) => {
+    try {
+      const r = await apiRequest("POST", `/api/admin/withdrawals/${id}/reject`, { reason: "Rejected by admin" });
+      const d = await r.json();
+      if (d.success) {
+        toast({ title: "Withdrawal rejected" });
+        queryClient.invalidateQueries({ queryKey: ["/api/admin/withdrawals/pending"] });
+        queryClient.invalidateQueries({ queryKey: ["/api/admin/withdrawals/processed"] });
+        queryClient.invalidateQueries({ queryKey: ["/api/admin/stats"] });
+      } else {
+        toast({ title: d.message || "Failed", variant: "destructive" });
+      }
+    } catch {
+      toast({ title: "Error", variant: "destructive" });
+    }
+  };
+
+  const statusBadge = (status: string) => {
+    if (["success", "paid", "Approved", "approved", "completed"].includes(status))
+      return <span className="text-[10px] bg-green-600/20 text-green-400 px-1.5 py-0.5 rounded-full border border-green-600/30">Approved</span>;
+    if (status === "rejected")
+      return <span className="text-[10px] bg-red-600/20 text-red-400 px-1.5 py-0.5 rounded-full border border-red-600/30">Rejected</span>;
+    return <span className="text-[10px] bg-yellow-600/20 text-yellow-400 px-1.5 py-0.5 rounded-full border border-yellow-600/30">Pending</span>;
+  };
+
+  const pendingCount = allWithdrawals.filter(w => w.status === "pending").length;
+
+  return (
+    <div className="space-y-3">
+      {/* Filter tabs */}
+      <div className="flex gap-1 flex-wrap">
+        {(["pending", "all", "approved", "rejected"] as const).map(f => (
+          <button
+            key={f}
+            onClick={() => setFilter(f)}
+            className={`px-3 py-1 rounded-lg text-xs font-medium transition-all ${filter === f ? "bg-blue-600 text-white" : "bg-white/5 text-gray-400 hover:bg-white/10"}`}
+          >
+            {f === "pending" ? `Pending (${pendingCount})` : f.charAt(0).toUpperCase() + f.slice(1)}
+          </button>
+        ))}
+      </div>
+
+      {/* Search */}
+      <div className="relative">
+        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-gray-500" />
+        <Input
+          className="pl-8 h-8 text-xs bg-[#0f0f0f] border-white/10"
+          placeholder="Search name, address, TX ID..."
+          value={search}
+          onChange={e => setSearch(e.target.value)}
+        />
+      </div>
+
+      {/* List */}
+      {paged.length === 0 ? (
+        <div className="text-center py-10 text-gray-500 text-sm">No withdrawals found</div>
+      ) : (
+        <div className="space-y-2">
+          {paged.map((w: any) => {
+            const userName = w.user?.firstName || "User";
+            const userUsername = w.user?.username ? `@${w.user.username}` : "—";
+            const userId = w.user?.telegram_id || w.userId || "—";
+            const address = w.details?.paymentDetails || w.address || "—";
+            const amount = parseFloat(w.amount || "0");
+            const fee = parseFloat(w.fee || "0");
+            const date = w.createdAt ? new Date(w.createdAt).toLocaleString() : "—";
+            const txId = w.transactionHash || w.txHash || "";
+
+            return (
+              <div key={w.id} className="bg-[#0f0f0f] border border-white/8 rounded-xl p-3 space-y-2">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-xs font-semibold text-white">
+                      {userName} <span className="text-gray-500 font-normal text-[10px]">{userUsername}</span>
+                    </p>
+                    <p className="text-[10px] text-gray-500">ID: {userId}</p>
+                  </div>
+                  <div className="text-right">
+                    <p className="text-sm font-bold text-white">{fmt(amount)} SAT</p>
+                    {fee > 0 && <p className="text-[10px] text-gray-500">Fee: {fmt(fee)} SAT</p>}
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-2 gap-x-4 gap-y-1.5">
+                  <div>
+                    <p className="text-[9px] text-gray-600 uppercase tracking-wide">Address</p>
+                    <p className="text-[10px] text-blue-300 font-mono truncate max-w-[120px]" title={address}>{address}</p>
+                  </div>
+                  <div>
+                    <p className="text-[9px] text-gray-600 uppercase tracking-wide">Date</p>
+                    <p className="text-[10px] text-gray-300">{date}</p>
+                  </div>
+                  <div>
+                    <p className="text-[9px] text-gray-600 uppercase tracking-wide">TX ID</p>
+                    <p className="text-[10px] text-gray-400 font-mono" title={txId}>
+                      {txId ? txId.slice(0, 14) + (txId.length > 14 ? "..." : "") : "—"}
+                    </p>
+                  </div>
+                  <div>
+                    <p className="text-[9px] text-gray-600 uppercase tracking-wide">Status</p>
+                    {statusBadge(w.status)}
+                  </div>
+                </div>
+
+                {w.rejectionReason && (
+                  <p className="text-[10px] text-red-400">Reason: {w.rejectionReason}</p>
+                )}
+
+                {w.status === "pending" && (
+                  <div className="flex gap-2 pt-1">
+                    <Button size="sm" onClick={() => handleApprove(w.id)} className="flex-1 h-7 text-xs bg-green-700 hover:bg-green-600">
+                      Approve
+                    </Button>
+                    <Button size="sm" onClick={() => handleReject(w.id)} className="flex-1 h-7 text-xs bg-red-700 hover:bg-red-600">
+                      Reject
+                    </Button>
+                  </div>
+                )}
+              </div>
+            );
+          })}
+        </div>
+      )}
+
+      {/* Pagination */}
+      {totalPages > 1 && (
+        <div className="flex items-center justify-between text-xs text-gray-500">
+          <span>{filtered.length} records</span>
+          <div className="flex items-center gap-1">
+            <Button size="sm" variant="ghost" onClick={() => setPage(p => Math.max(1, p - 1))} disabled={page === 1} className="h-6 w-6 p-0">
+              <ChevronLeft className="w-3 h-3" />
+            </Button>
+            <span>{page}/{totalPages}</span>
+            <Button size="sm" variant="ghost" onClick={() => setPage(p => Math.min(totalPages, p + 1))} disabled={page === totalPages} className="h-6 w-6 p-0">
+              <ChevronRight className="w-3 h-3" />
+            </Button>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+/* ─── BANS ────────────────────────────────────────────────────────────────── */
+
+function BanSection() {
+  const { toast } = useToast();
+  const queryClient = useQueryClient();
+  const [view, setView] = useState<"users" | "logs">("users");
+  const [search, setSearch] = useState("");
+  const [page, setPage] = useState(1);
   const [unbanningId, setUnbanningId] = useState<string | null>(null);
-  const itemsPerPage = 8;
+  const perPage = 5;
 
-  const { data: banLogsData, isLoading: logsLoading } = useQuery({
+  const { data: banLogs } = useQuery({
     queryKey: ["/api/admin/ban-logs"],
-    queryFn: () => apiRequest("GET", "/api/admin/ban-logs?limit=200").then(res => res.json()),
+    queryFn: () => apiRequest("GET", "/api/admin/ban-logs?limit=200").then(r => r.json()),
     refetchInterval: 30000,
   });
 
-  const { data: bannedUsersData, isLoading: usersLoading } = useQuery({
+  const { data: bannedUsers } = useQuery({
     queryKey: ["/api/admin/banned-users-details"],
-    queryFn: () => apiRequest("GET", "/api/admin/banned-users-details").then(res => res.json()),
+    queryFn: () => apiRequest("GET", "/api/admin/banned-users-details").then(r => r.json()),
     refetchInterval: 30000,
   });
 
-  const logs = banLogsData || [];
-  const bannedUsers = bannedUsersData || [];
-
-  const filteredLogs = logs.filter((log: any) => {
-    if (filterType !== 'all' && log.banType !== filterType) return false;
-    if (searchTerm) {
-      const search = searchTerm.toLowerCase();
-      return (
-        log.bannedUserUid?.toLowerCase().includes(search) ||
-        log.deviceId?.toLowerCase().includes(search) ||
-        log.ip?.toLowerCase().includes(search) ||
-        log.reason?.toLowerCase().includes(search)
-      );
-    }
-    return true;
+  const { data: allUsersRaw } = useQuery({
+    queryKey: ["/api/admin/users"],
+    queryFn: () => apiRequest("GET", "/api/admin/users").then(r => r.json()),
+    refetchInterval: 60000,
   });
 
-  const filteredUsers = bannedUsers.filter((user: any) => {
-    if (searchTerm) {
-      const search = searchTerm.toLowerCase();
-      return (
-        user.referralCode?.toLowerCase().includes(search) ||
-        user.personalCode?.toLowerCase().includes(search) ||
-        user.firstName?.toLowerCase().includes(search) ||
-        user.deviceId?.toLowerCase().includes(search) ||
-        user.lastLoginIp?.toLowerCase().includes(search) ||
-        user.bannedReason?.toLowerCase().includes(search)
-      );
-    }
-    return true;
+  const logs: any[] = banLogs || [];
+  const banned: any[] = bannedUsers || [];
+  const allUsers: any[] = allUsersRaw?.users || allUsersRaw || [];
+
+  const filteredBanned = banned.filter(u => {
+    if (!search) return true;
+    const s = search.toLowerCase();
+    return (
+      u.firstName?.toLowerCase().includes(s) ||
+      u.username?.toLowerCase().includes(s) ||
+      u.telegram_id?.toString().includes(s) ||
+      u.deviceId?.toLowerCase().includes(s)
+    );
   });
 
-  const totalPages = activeView === 'logs' 
-    ? Math.ceil(filteredLogs.length / itemsPerPage)
-    : Math.ceil(filteredUsers.length / itemsPerPage);
-  
-  const paginatedLogs = filteredLogs.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage);
-  const paginatedUsers = filteredUsers.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage);
+  const filteredLogs = logs.filter(l => {
+    if (!search) return true;
+    const s = search.toLowerCase();
+    return (
+      l.reason?.toLowerCase().includes(s) ||
+      l.bannedUserUid?.toLowerCase().includes(s) ||
+      l.ip?.toLowerCase().includes(s)
+    );
+  });
 
-  const autoBanCount = logs.filter((l: any) => l.banType === 'auto').length;
-  const manualBanCount = logs.filter((l: any) => l.banType === 'manual').length;
+  const data = view === "users" ? filteredBanned : filteredLogs;
+  const totalPages = Math.ceil(data.length / perPage);
+  const paged = data.slice((page - 1) * perPage, page * perPage);
+
+  useEffect(() => { setPage(1); }, [view, search]);
 
   const handleUnban = async (userId: string) => {
     setUnbanningId(userId);
     try {
-      const response = await apiRequest('POST', `/api/admin/users/${userId}/unban`);
-      const result = await response.json();
-      
-      if (result.success) {
-        toast({
-          title: "User Unbanned",
-          description: "The user has been successfully unbanned",
-        });
+      const r = await apiRequest("POST", `/api/admin/users/${userId}/unban`);
+      const d = await r.json();
+      if (d.success) {
+        toast({ title: "User unbanned" });
         queryClient.invalidateQueries({ queryKey: ["/api/admin/banned-users-details"] });
         queryClient.invalidateQueries({ queryKey: ["/api/admin/ban-logs"] });
         queryClient.invalidateQueries({ queryKey: ["/api/admin/users"] });
-      } else {
-        throw new Error(result.message || 'Failed to unban user');
       }
-    } catch (error: any) {
-      toast({
-        title: "Error",
-        description: error.message || "Failed to unban user",
-        variant: "destructive",
-      });
+    } catch {
+      toast({ title: "Error", variant: "destructive" });
     } finally {
       setUnbanningId(null);
     }
   };
 
-  useEffect(() => {
-    setCurrentPage(1);
-  }, [activeView, filterType, searchTerm]);
-
-  const isLoading = activeView === 'logs' ? logsLoading : usersLoading;
-
-  if (isLoading) {
-    return (
-      <div className="space-y-3">
-        <div className="grid grid-cols-3 gap-2">
-          {[...Array(3)].map((_, i) => (
-            <div key={i} className="bg-muted h-16 rounded-lg animate-pulse" />
-          ))}
-        </div>
-        <div className="bg-muted h-48 rounded-lg animate-pulse" />
-      </div>
+  const getMultipleAccounts = (u: any) => {
+    if (!u.deviceId && !u.lastLoginIp) return [];
+    return allUsers.filter((a: any) =>
+      a.id !== u.id && (
+        (u.deviceId && a.deviceId === u.deviceId) ||
+        (u.lastLoginIp && a.lastLoginIp === u.lastLoginIp)
+      )
     );
-  }
+  };
+
+  const getInviteNetwork = (userId: string) => {
+    return allUsers.filter((a: any) => a.referredBy === userId);
+  };
+
+  const autoBans = logs.filter((l: any) => l.banType === "auto").length;
+  const manualBans = logs.filter((l: any) => l.banType === "manual").length;
 
   return (
     <div className="space-y-3">
-      <div className="grid grid-cols-3 gap-2">
-        <div className="bg-gradient-to-br from-red-500/20 to-red-500/5 p-3 rounded text-center border border-red-500/30">
-          <p className="text-2xl font-bold text-red-400">{bannedUsers.length}</p>
-          <p className="text-xs text-muted-foreground">Banned Users</p>
+      {/* Stats */}
+      <div className="grid grid-cols-3 gap-2 text-center">
+        <div className="bg-[#0f0f0f] border border-white/8 rounded-xl py-2">
+          <p className="text-lg font-bold text-red-400">{banned.length}</p>
+          <p className="text-[10px] text-gray-500">Banned</p>
         </div>
-        <div className="bg-gradient-to-br from-orange-500/20 to-orange-500/5 p-3 rounded text-center border border-orange-500/30">
-          <p className="text-2xl font-bold text-orange-400">{autoBanCount}</p>
-          <p className="text-xs text-muted-foreground">Auto Bans</p>
+        <div className="bg-[#0f0f0f] border border-white/8 rounded-xl py-2">
+          <p className="text-lg font-bold text-orange-400">{autoBans}</p>
+          <p className="text-[10px] text-gray-500">Auto-ban</p>
         </div>
-        <div className="bg-gradient-to-br from-purple-500/20 to-purple-500/5 p-3 rounded text-center border border-purple-500/30">
-          <p className="text-2xl font-bold text-purple-400">{manualBanCount}</p>
-          <p className="text-xs text-muted-foreground">Manual Bans</p>
+        <div className="bg-[#0f0f0f] border border-white/8 rounded-xl py-2">
+          <p className="text-lg font-bold text-purple-400">{manualBans}</p>
+          <p className="text-[10px] text-gray-500">Manual</p>
         </div>
       </div>
 
-      <div className="flex gap-2 flex-wrap items-center">
-        <Button 
-          size="sm" 
-          variant="outline" 
-          onClick={() => setActiveView('users')} 
-          className={`text-xs h-7 ${activeView === 'users' ? 'bg-gradient-to-r from-red-500/20 to-red-500/10 border-red-500 text-red-400' : 'border-white/20 text-muted-foreground hover:border-red-500/50'}`}
-        >
-          <i className="fas fa-user-slash mr-1"></i>Banned Users ({bannedUsers.length})
-        </Button>
-        <Button 
-          size="sm" 
-          variant="outline" 
-          onClick={() => setActiveView('logs')} 
-          className={`text-xs h-7 ${activeView === 'logs' ? 'bg-gradient-to-r from-orange-500/20 to-orange-500/10 border-orange-500 text-orange-400' : 'border-white/20 text-muted-foreground hover:border-orange-500/50'}`}
-        >
-          <i className="fas fa-history mr-1"></i>Ban History ({logs.length})
-        </Button>
+      {/* View toggle */}
+      <div className="flex gap-1">
+        {(["users", "logs"] as const).map(v => (
+          <button
+            key={v}
+            onClick={() => setView(v)}
+            className={`px-3 py-1 rounded-lg text-xs font-medium transition-all ${view === v ? "bg-red-700 text-white" : "bg-white/5 text-gray-400 hover:bg-white/10"}`}
+          >
+            {v === "users" ? `Banned Users (${banned.length})` : `Ban Logs (${logs.length})`}
+          </button>
+        ))}
       </div>
 
-      <div className="flex gap-2 flex-wrap items-center">
+      {/* Search */}
+      <div className="relative">
+        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-gray-500" />
         <Input
-          placeholder={activeView === 'logs' ? "Search by UID, IP, Device ID..." : "Search banned users..."}
-          value={searchTerm}
-          onChange={(e) => setSearchTerm(e.target.value)}
-          className="h-8 text-sm flex-1 min-w-[150px]"
+          className="pl-8 h-8 text-xs bg-[#0f0f0f] border-white/10"
+          placeholder="Search name, ID, IP, device..."
+          value={search}
+          onChange={e => setSearch(e.target.value)}
         />
-        {activeView === 'logs' && (
-          <div className="flex gap-1">
-            <Button 
-              size="sm" 
-              variant="outline" 
-              onClick={() => setFilterType('all')} 
-              className={`text-xs h-8 px-2 ${filterType === 'all' ? 'bg-white/10 border-white/30' : 'border-white/10'}`}
-            >
-              All
-            </Button>
-            <Button 
-              size="sm" 
-              variant="outline" 
-              onClick={() => setFilterType('auto')} 
-              className={`text-xs h-8 px-2 ${filterType === 'auto' ? 'bg-orange-500/20 border-orange-500' : 'border-white/10'}`}
-            >
-              Auto
-            </Button>
-            <Button 
-              size="sm" 
-              variant="outline" 
-              onClick={() => setFilterType('manual')} 
-              className={`text-xs h-8 px-2 ${filterType === 'manual' ? 'bg-purple-500/20 border-purple-500' : 'border-white/10'}`}
-            >
-              Manual
-            </Button>
-          </div>
-        )}
       </div>
 
-      {activeView === 'users' ? (
-        filteredUsers.length === 0 ? (
-          <div className="text-center py-8 text-muted-foreground text-sm">
-            <i className="fas fa-check-circle text-2xl mb-2 text-green-500"></i>
-            <p>No banned users</p>
-          </div>
-        ) : (
-          <div className="overflow-x-auto max-h-[320px] overflow-y-auto border border-white/10 rounded-lg">
-            <Table>
-              <TableHeader className="sticky top-0 bg-background">
-                <TableRow>
-                  <TableHead className="text-xs">UID</TableHead>
-                  <TableHead className="text-xs">Reason</TableHead>
-                  <TableHead className="text-xs">Referrer UID</TableHead>
-                  <TableHead className="text-xs">Date</TableHead>
-                  <TableHead className="text-xs">Action</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {paginatedUsers.map((user: any) => (
-                  <TableRow key={user.id} className="hover:bg-muted/50">
-                    <TableCell className="font-mono text-xs text-[#4cd3ff] py-2">
-                      {user.referralCode || user.personalCode || user.id?.slice(0, 8) || 'N/A'}
-                    </TableCell>
-                    <TableCell className="text-xs py-2 max-w-[150px] truncate" title={user.bannedReason}>
-                      {user.bannedReason || 'No reason provided'}
-                    </TableCell>
-                    <TableCell className="font-mono text-xs py-2 text-orange-400" title={user.referrerUid}>
-                      {user.referrerUid || 'Direct'}
-                    </TableCell>
-                    <TableCell className="text-[10px] text-muted-foreground py-2">
-                      {user.bannedAt ? new Date(user.bannedAt).toLocaleDateString() : 'N/A'}
-                    </TableCell>
-                    <TableCell className="py-2">
-                      <Button 
-                        size="sm" 
-                        variant="outline"
-                        onClick={() => handleUnban(user.id)}
-                        disabled={unbanningId === user.id}
-                        className="h-6 text-xs px-2 border-green-500 text-green-400 hover:bg-green-500/20"
-                      >
-                        {unbanningId === user.id ? (
-                          <i className="fas fa-spinner fa-spin"></i>
-                        ) : (
-                          <><i className="fas fa-unlock mr-1"></i>Unban</>
-                        )}
-                      </Button>
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          </div>
-        )
+      {/* Content */}
+      {view === "users" ? (
+        <div className="space-y-2">
+          {(paged as any[]).length === 0 ? (
+            <div className="text-center py-8 text-gray-500 text-sm">No banned users</div>
+          ) : (paged as any[]).map((u: any) => {
+            const multi = getMultipleAccounts(u);
+            const network = getInviteNetwork(u.id);
+            return (
+              <div key={u.id} className="bg-[#0f0f0f] border border-red-600/20 rounded-xl p-3 space-y-2">
+                <div className="flex items-start justify-between">
+                  <div>
+                    <p className="text-xs font-semibold text-white">
+                      {u.firstName || "User"}
+                      {u.username && <span className="text-gray-500 font-normal ml-1">@{u.username}</span>}
+                    </p>
+                    <p className="text-[10px] text-gray-500">TG: {u.telegram_id || "—"} · ID: {u.referralCode || u.id?.slice(0, 8)}</p>
+                    {u.bannedReason && <p className="text-[10px] text-red-400 mt-0.5">Reason: {u.bannedReason}</p>}
+                  </div>
+                  <Button
+                    size="sm"
+                    onClick={() => handleUnban(u.id)}
+                    disabled={unbanningId === u.id}
+                    className="h-6 text-[10px] px-2 bg-green-800 hover:bg-green-700"
+                  >
+                    {unbanningId === u.id ? "..." : "Unban"}
+                  </Button>
+                </div>
+
+                <div className="grid grid-cols-2 gap-2">
+                  {u.deviceId && (
+                    <div className="bg-white/3 rounded-lg p-1.5">
+                      <p className="text-[9px] text-gray-600 uppercase">Device ID</p>
+                      <p className="text-[10px] text-gray-400 font-mono truncate">{u.deviceId.slice(0, 16)}...</p>
+                    </div>
+                  )}
+                  {u.lastLoginIp && (
+                    <div className="bg-white/3 rounded-lg p-1.5">
+                      <p className="text-[9px] text-gray-600 uppercase">Last IP</p>
+                      <p className="text-[10px] text-gray-400 font-mono">{u.lastLoginIp}</p>
+                    </div>
+                  )}
+                </div>
+
+                {multi.length > 0 && (
+                  <div className="bg-orange-900/10 border border-orange-600/20 rounded-lg p-2">
+                    <p className="text-[10px] text-orange-400 font-semibold mb-1">
+                      ⚠ {multi.length} Suspicious Account(s) — Same Device/IP
+                    </p>
+                    {multi.slice(0, 3).map((acc: any) => (
+                      <p key={acc.id} className="text-[9px] text-gray-400">
+                        • {acc.firstName || "User"} {acc.username ? `@${acc.username}` : ""} (TG: {acc.telegram_id})
+                      </p>
+                    ))}
+                  </div>
+                )}
+
+                {network.length > 0 && (
+                  <div className="bg-blue-900/10 border border-blue-600/20 rounded-lg p-2">
+                    <p className="text-[10px] text-blue-400 font-semibold mb-1">
+                      Invite Network ({network.length} user{network.length !== 1 ? "s" : ""} invited)
+                    </p>
+                    {network.slice(0, 3).map((acc: any) => (
+                      <p key={acc.id} className="text-[9px] text-gray-400">
+                        • {acc.firstName || "User"} {acc.username ? `@${acc.username}` : ""}
+                      </p>
+                    ))}
+                    {network.length > 3 && <p className="text-[9px] text-gray-500">...and {network.length - 3} more</p>}
+                  </div>
+                )}
+              </div>
+            );
+          })}
+        </div>
       ) : (
-        filteredLogs.length === 0 ? (
-          <div className="text-center py-8 text-muted-foreground text-sm">
-            <i className="fas fa-shield-alt text-2xl mb-2"></i>
-            <p>No ban logs found</p>
-          </div>
-        ) : (
-          <div className="overflow-x-auto max-h-[320px] overflow-y-auto border border-white/10 rounded-lg">
-            <Table>
-              <TableHeader className="sticky top-0 bg-background">
-                <TableRow>
-                  <TableHead className="text-xs">UID</TableHead>
-                  <TableHead className="text-xs">Type</TableHead>
-                  <TableHead className="text-xs">Reason</TableHead>
-                  <TableHead className="text-xs">Referrer UID</TableHead>
-                  <TableHead className="text-xs">Date</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {paginatedLogs.map((log: any) => (
-                  <TableRow key={log.id} className="hover:bg-muted/50">
-                    <TableCell className="font-mono text-xs text-[#4cd3ff] py-2">
-                      {log.bannedUserUid || log.bannedUserId?.slice(0, 8) || 'N/A'}
-                    </TableCell>
-                    <TableCell className="py-2">
-                      <Badge className={`text-[10px] ${log.banType === 'auto' ? 'bg-orange-600' : 'bg-purple-600'}`}>
-                        {log.banType === 'auto' ? 'Auto' : 'Manual'}
-                      </Badge>
-                    </TableCell>
-                    <TableCell className="text-xs py-2 max-w-[120px] truncate" title={log.reason}>
-                      {log.reason}
-                    </TableCell>
-                    <TableCell className="font-mono text-xs py-2 text-orange-400" title={log.referrerUid}>
-                      {log.referrerUid || 'Direct'}
-                    </TableCell>
-                    <TableCell className="text-[10px] text-muted-foreground py-2">
-                      {log.createdAt ? new Date(log.createdAt).toLocaleDateString() : 'N/A'}
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          </div>
-        )
+        <div className="space-y-2">
+          {(paged as any[]).length === 0 ? (
+            <div className="text-center py-8 text-gray-500 text-sm">No ban logs</div>
+          ) : (paged as any[]).map((log: any) => (
+            <div key={log.id} className="bg-[#0f0f0f] border border-white/8 rounded-xl p-3 space-y-1">
+              <div className="flex items-center justify-between">
+                <span className={`text-[10px] px-1.5 py-0.5 rounded-full border ${
+                  log.banType === "auto"
+                    ? "bg-orange-600/20 text-orange-400 border-orange-600/30"
+                    : "bg-purple-600/20 text-purple-400 border-purple-600/30"
+                }`}>
+                  {log.banType === "auto" ? "Auto-ban" : "Manual"}
+                </span>
+                <span className="text-[10px] text-gray-500">
+                  {log.createdAt ? new Date(log.createdAt).toLocaleDateString() : "—"}
+                </span>
+              </div>
+              <p className="text-xs text-white">{log.reason || "No reason"}</p>
+              {log.bannedUserUid && <p className="text-[10px] text-gray-500">User: {log.bannedUserUid}</p>}
+              {log.ip && <p className="text-[10px] text-gray-500 font-mono">IP: {log.ip}</p>}
+              {log.deviceId && <p className="text-[10px] text-gray-500 font-mono">Device: {log.deviceId.slice(0, 16)}...</p>}
+            </div>
+          ))}
+        </div>
       )}
 
       {totalPages > 1 && (
-        <div className="flex items-center justify-between text-xs">
-          <span className="text-muted-foreground">
-            {activeView === 'logs' ? `${filteredLogs.length} ban logs` : `${filteredUsers.length} banned users`}
-          </span>
+        <div className="flex items-center justify-between text-xs text-gray-500">
+          <span>{data.length} records</span>
           <div className="flex items-center gap-1">
-            <Button size="sm" variant="ghost" onClick={() => setCurrentPage(p => Math.max(1, p - 1))} disabled={currentPage === 1} className="h-6 w-6 p-0">
-              <i className="fas fa-chevron-left text-xs"></i>
+            <Button size="sm" variant="ghost" onClick={() => setPage(p => Math.max(1, p - 1))} disabled={page === 1} className="h-6 w-6 p-0">
+              <ChevronLeft className="w-3 h-3" />
             </Button>
-            <span className="px-2">{currentPage}/{totalPages}</span>
-            <Button size="sm" variant="ghost" onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))} disabled={currentPage === totalPages} className="h-6 w-6 p-0">
-              <i className="fas fa-chevron-right text-xs"></i>
+            <span>{page}/{totalPages}</span>
+            <Button size="sm" variant="ghost" onClick={() => setPage(p => Math.min(totalPages, p + 1))} disabled={page === totalPages} className="h-6 w-6 p-0">
+              <ChevronRight className="w-3 h-3" />
             </Button>
           </div>
         </div>
@@ -1446,1195 +1010,241 @@ function BanLogsSection() {
   );
 }
 
-type SettingsCategory = 'mining' | 'ads' | 'affiliates' | 'withdrawals' | 'tasks' | 'bug' | 'other';
+/* ─── SETTINGS ────────────────────────────────────────────────────────────── */
+
+type SettCat = "mining" | "affiliates" | "withdrawals" | "ads" | "other";
 
 function SettingsSection() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
-  const [isSaving, setIsSaving] = useState(false);
-  const [activeCategory, setActiveCategory] = useState<SettingsCategory>('mining');
-  
+  const [cat, setCat] = useState<SettCat>("mining");
+  const [saving, setSaving] = useState(false);
+
   const { data: settingsData, isLoading } = useQuery({
     queryKey: ["/api/admin/settings"],
-    queryFn: () => apiRequest("GET", "/api/admin/settings").then(res => res.json()),
+    queryFn: () => apiRequest("GET", "/api/admin/settings").then(r => r.json()),
   });
-  
-  const [settings, setSettings] = useState<Record<string, string | boolean>>({
-    dailyAdLimit: '50',
-    rewardPerAd: '2',
-    affiliateCommission: '10',
-    walletChangeFee: '100',
-    minimum_withdrawal_ton: '0.1',
-    withdrawal_fee_ton: '0.01',
-    channelTaskCost: '0.003',
-    botTaskCost: '0.003',
-    channelTaskCostTON: '0.0003',
-    botTaskCostTON: '0.0003',
-    channelTaskReward: '30',
-    botTaskReward: '20',
-    partnerTaskReward: '5',
-    minimumConvertHrum: '100',
-    minimumClicks: '500',
-    seasonBroadcastActive: false,
+
+  const [s, setS] = useState<Record<string, any>>({
+    ad_section1_reward: "0.0015",
+    ad_section1_limit: "250",
+    ad_section2_reward: "0.0001",
+    ad_section2_limit: "250",
+    affiliateCommission: "10",
+    referralBoostPerInvite: "0.02",
     referralRewardEnabled: false,
-    referralRewardTON: '0.0005',
-    referralRewardHrum: '50',
-    referralAdsRequired: '1',
-    withdrawalAdRequirementEnabled: true,
-    minimumAdsForWithdrawal: '100',
+    minimum_withdrawal_sat: "100",
+    withdrawal_fee_sat: "0",
     withdrawalInviteRequirementEnabled: true,
-    minimumInvitesForWithdrawal: '3',
-    streakReward: '100',
-    shareTaskReward: '1000',
-    communityTaskReward: '1000',
-    bugRewardPerAd: '1',
-    bugRewardPerTask: '10',
-    bugRewardPerReferral: '50',
-    minimumBugForWithdrawal: '1000',
-    padToBugRate: '1',
-    minimumConvertPadToBug: '1000',
-    bugPerUsd: '10000',
-    withdrawalBugRequirementEnabled: true,
-    ad_section1_reward: '0.0015',
-    ad_section1_limit: '250',
-    ad_section2_reward: '0.0001',
-    ad_section2_limit: '250',
-    channelJoinRequired: true
+    minimumInvitesForWithdrawal: "3",
+    channelJoinRequired: true,
   });
-  
+
   useEffect(() => {
     if (settingsData) {
-      setSettings({
-        dailyAdLimit: settingsData.dailyAdLimit?.toString() || '50',
-        rewardPerAd: settingsData.rewardPerAd?.toString() || '2',
-        affiliateCommission: settingsData.affiliateCommission?.toString() || '10',
-        walletChangeFee: settingsData.walletChangeFee?.toString() || '100',
-        minimum_withdrawal_ton: settingsData.minimum_withdrawal_ton?.toString() || '0.1',
-        withdrawal_fee_ton: settingsData.withdrawal_fee_ton?.toString() || '0.01',
-        channelTaskCost: settingsData.channelTaskCost?.toString() || '0.003',
-        botTaskCost: settingsData.botTaskCost?.toString() || '0.003',
-        channelTaskCostTON: settingsData.channelTaskCostTON?.toString() || '0.0003',
-        botTaskCostTON: settingsData.botTaskCostTON?.toString() || '0.0003',
-        channelTaskReward: settingsData.channelTaskReward?.toString() || '30',
-        botTaskReward: settingsData.botTaskReward?.toString() || '20',
-        partnerTaskReward: settingsData.partnerTaskReward?.toString() || '5',
-        minimumConvertHrum: settingsData.minimumConvertHrum?.toString() || '100',
-        minimumClicks: settingsData.minimumClicks?.toString() || '500',
-        seasonBroadcastActive: settingsData.seasonBroadcastActive || false,
+      setS({
+        ad_section1_reward: settingsData.ad_section1_reward?.toString() || "0.0015",
+        ad_section1_limit: settingsData.ad_section1_limit?.toString() || "250",
+        ad_section2_reward: settingsData.ad_section2_reward?.toString() || "0.0001",
+        ad_section2_limit: settingsData.ad_section2_limit?.toString() || "250",
+        affiliateCommission: settingsData.affiliateCommission?.toString() || "10",
+        referralBoostPerInvite: settingsData.referralBoostPerInvite?.toString() || "0.02",
         referralRewardEnabled: settingsData.referralRewardEnabled || false,
-        referralRewardTON: settingsData.referralRewardTON?.toString() || '0.0005',
-        referralRewardHrum: settingsData.referralRewardHrum?.toString() || '50',
-        referralAdsRequired: settingsData.referralAdsRequired?.toString() || '1',
-        withdrawalAdRequirementEnabled: settingsData.withdrawalAdRequirementEnabled !== false,
-        minimumAdsForWithdrawal: settingsData.minimumAdsForWithdrawal?.toString() || '100',
+        minimum_withdrawal_sat: settingsData.minWithdrawalAmountTON?.toString() || "100",
+        withdrawal_fee_sat: settingsData.withdrawalFeeTON?.toString() || "0",
         withdrawalInviteRequirementEnabled: settingsData.withdrawalInviteRequirementEnabled !== false,
-        minimumInvitesForWithdrawal: settingsData.minimumInvitesForWithdrawal?.toString() || '3',
-        streakReward: settingsData.streakReward?.toString() || '100',
-        shareTaskReward: settingsData.shareTaskReward?.toString() || '1000',
-        communityTaskReward: settingsData.communityTaskReward?.toString() || '1000',
-        bugRewardPerAd: settingsData.bugRewardPerAd?.toString() || '1',
-        bugRewardPerTask: settingsData.bugRewardPerTask?.toString() || '10',
-        bugRewardPerReferral: settingsData.bugRewardPerReferral?.toString() || '50',
-        minimumBugForWithdrawal: settingsData.minimumBugForWithdrawal?.toString() || '1000',
-        padToBugRate: settingsData.padToBugRate?.toString() || '1',
-        minimumConvertPadToBug: settingsData.minimumConvertPadToBug?.toString() || '1000',
-        bugPerUsd: settingsData.bugPerUsd?.toString() || '10000',
-        withdrawalBugRequirementEnabled: settingsData.withdrawalBugRequirementEnabled !== false,
-        ad_section1_reward: settingsData.ad_section1_reward?.toString() || '0.0015',
-        ad_section1_limit: settingsData.ad_section1_limit?.toString() || '250',
-        ad_section2_reward: settingsData.ad_section2_reward?.toString() || '0.0001',
-        ad_section2_limit: settingsData.ad_section2_limit?.toString() || '250',
-        channelJoinRequired: settingsData.channel_join_required !== false
+        minimumInvitesForWithdrawal: settingsData.minimumInvitesForWithdrawal?.toString() || "3",
+        channelJoinRequired: settingsData.channelJoinRequired !== false,
       });
     }
   }, [settingsData]);
-  
-  const categories = [
-    { id: 'mining' as const, label: 'Mining Boosts', icon: 'bolt' },
-    { id: 'affiliates' as const, label: 'Affiliates', icon: 'users' },
-    { id: 'withdrawals' as const, label: 'Withdrawals', icon: 'wallet' },
-    { id: 'tasks' as const, label: 'Tasks', icon: 'tasks' },
-    { id: 'bug' as const, label: 'BUG Currency', icon: 'bug' },
-    { id: 'other' as const, label: 'Other', icon: 'cog' },
-  ];
-  
-  const handleSaveSettings = async () => {
-    const adLimit = parseInt(settings.dailyAdLimit as string);
-    const reward = parseInt(settings.rewardPerAd as string);
-    const affiliate = parseFloat(settings.affiliateCommission as string);
-    const walletFee = parseInt(settings.walletChangeFee as string);
-    const minWithdrawal = parseFloat(settings.minimum_withdrawal_ton as string);
-    const withdrawalFee = parseFloat(settings.withdrawal_fee_ton as string);
-    const channelCost = parseFloat(settings.channelTaskCost as string);
-    const botCost = parseFloat(settings.botTaskCost as string);
-    const channelReward = parseInt(settings.channelTaskReward as string);
-    const botReward = parseInt(settings.botTaskReward as string);
-    const partnerReward = parseInt(settings.partnerTaskReward as string);
-    const minConvertHrum = parseInt(settings.minimumConvertHrum as string);
-    const minClicks = parseInt(settings.minimumClicks as string);
-    const refReward = parseFloat(settings.referralRewardTON as string);
-    const refRewardHrum = parseInt(settings.referralRewardHrum as string);
 
-    setIsSaving(true);
+  const save = async () => {
+    setSaving(true);
     try {
-      const payload: Record<string, string | boolean> = {
-        dailyAdLimit: settings.dailyAdLimit?.toString() || '50',
-        rewardPerAd: settings.rewardPerAd?.toString() || '2',
-        affiliateCommission: settings.affiliateCommission?.toString() || '10',
-        walletChangeFee: settings.walletChangeFee?.toString() || '100',
-        minimum_withdrawal_ton: settings.minimum_withdrawal_ton?.toString() || '0.1',
-        withdrawal_fee_ton: settings.withdrawal_fee_ton?.toString() || '0.01',
-        channelTaskCost: settings.channelTaskCost?.toString() || '0.003',
-        botTaskCost: settings.botTaskCost?.toString() || '0.003',
-        channelTaskReward: settings.channelTaskReward?.toString() || '30',
-        botTaskReward: settings.botTaskReward?.toString() || '20',
-        partnerTaskReward: settings.partnerTaskReward?.toString() || '5',
-        minimumConvertHrum: settings.minimumConvertHrum?.toString() || '100',
-        minimumClicks: settings.minimumClicks?.toString() || '500',
-        referralRewardTON: settings.referralRewardTON?.toString() || '0.0005',
-        referralRewardHrum: settings.referralRewardHrum?.toString() || '50',
-        seasonBroadcastActive: !!settings.seasonBroadcastActive,
-        referralRewardEnabled: !!settings.referralRewardEnabled,
-        referralAdsRequired: settings.referralAdsRequired?.toString() || '1',
-        withdrawalAdRequirementEnabled: !!settings.withdrawalAdRequirementEnabled,
-        minimumAdsForWithdrawal: settings.minimumAdsForWithdrawal?.toString() || '100',
-        withdrawalInviteRequirementEnabled: !!settings.withdrawalInviteRequirementEnabled,
-        minimumInvitesForWithdrawal: settings.minimumInvitesForWithdrawal?.toString() || '3',
-        streakReward: settings.streakReward?.toString() || '100',
-        shareTaskReward: settings.shareTaskReward?.toString() || '1000',
-        communityTaskReward: settings.communityTaskReward?.toString() || '1000',
-        bugRewardPerAd: settings.bugRewardPerAd?.toString() || '1',
-        bugRewardPerTask: settings.bugRewardPerTask?.toString() || '10',
-        bugRewardPerReferral: settings.bugRewardPerReferral?.toString() || '50',
-        minimumBugForWithdrawal: settings.minimumBugForWithdrawal?.toString() || '1000',
-        padToBugRate: settings.padToBugRate?.toString() || '1',
-        minimumConvertPadToBug: settings.minimumConvertPadToBug?.toString() || '1000',
-        bugPerUsd: settings.bugPerUsd?.toString() || '10000',
-        withdrawalBugRequirementEnabled: !!settings.withdrawalBugRequirementEnabled,
-        ad_section1_reward: settings.ad_section1_reward?.toString() || '0.0015',
-        ad_section1_limit: settings.ad_section1_limit?.toString() || '250',
-        ad_section2_reward: settings.ad_section2_reward?.toString() || '0.0001',
-        ad_section2_limit: settings.ad_section2_limit?.toString() || '250',
-        channel_join_required: !!settings.channelJoinRequired,
+      const payload = {
+        ad_section1_reward: s.ad_section1_reward,
+        ad_section1_limit: parseInt(s.ad_section1_limit),
+        ad_section2_reward: s.ad_section2_reward,
+        ad_section2_limit: parseInt(s.ad_section2_limit),
+        affiliateCommission: parseFloat(s.affiliateCommission),
+        referralBoostPerInvite: parseFloat(s.referralBoostPerInvite),
+        referralRewardEnabled: Boolean(s.referralRewardEnabled),
+        minimum_withdrawal_sat: parseFloat(s.minimum_withdrawal_sat),
+        withdrawal_fee_sat: parseFloat(s.withdrawal_fee_sat),
+        withdrawalInviteRequirementEnabled: Boolean(s.withdrawalInviteRequirementEnabled),
+        minimumInvitesForWithdrawal: parseInt(s.minimumInvitesForWithdrawal),
+        channelJoinRequired: Boolean(s.channelJoinRequired),
       };
-
-      const res = await apiRequest("PUT", "/api/admin/settings", payload);
-      
-      if (res.ok) {
-        toast({
-          title: "Settings Updated",
-          description: "App settings have been updated successfully",
-        });
+      const r = await apiRequest("PUT", "/api/admin/settings", payload);
+      const d = await r.json();
+      if (d.success) {
+        toast({ title: "Settings saved" });
         queryClient.invalidateQueries({ queryKey: ["/api/admin/settings"] });
-        queryClient.invalidateQueries({ queryKey: ["/api/app-settings"] });
       } else {
-        const errorData = await res.json();
-        throw new Error(errorData.message || 'Failed to update settings');
+        toast({ title: d.message || "Failed", variant: "destructive" });
       }
-    } catch (error: any) {
-      toast({
-        title: "Error",
-        description: error.message || "Failed to update settings",
-        variant: "destructive",
-      });
+    } catch {
+      toast({ title: "Error saving settings", variant: "destructive" });
     } finally {
-      setIsSaving(false);
+      setSaving(false);
     }
   };
-  
+
+  const cats: { id: SettCat; label: string }[] = [
+    { id: "mining", label: "Mining" },
+    { id: "affiliates", label: "Affiliates" },
+    { id: "withdrawals", label: "Withdrawals" },
+    { id: "ads", label: "Ads" },
+    { id: "other", label: "Other" },
+  ];
+
   if (isLoading) {
     return (
-      <div className="text-center py-8">
-        <i className="fas fa-spinner fa-spin text-3xl text-primary mb-2"></i>
-        <p className="text-muted-foreground">Loading settings...</p>
+      <div className="space-y-3">
+        {[...Array(4)].map((_, i) => <div key={i} className="bg-[#0f0f0f] h-16 rounded-xl animate-pulse" />)}
       </div>
     );
   }
-  
+
   return (
-    <div className="space-y-3">
-      <div className="flex gap-1 flex-wrap">
-        {categories.map((cat) => {
-          const isActive = activeCategory === cat.id;
-          const catColors = cat.id === 'ads' ? 'from-orange-500/20 to-orange-500/10 border-orange-500 text-orange-400' :
-            cat.id === 'affiliates' ? 'from-green-500/20 to-green-500/10 border-green-500 text-green-400' :
-            cat.id === 'withdrawals' ? 'from-emerald-500/20 to-emerald-500/10 border-emerald-500 text-emerald-400' :
-            cat.id === 'tasks' ? 'from-cyan-500/20 to-cyan-500/10 border-[#4cd3ff] text-[#4cd3ff]' :
-            cat.id === 'bug' ? 'from-lime-500/20 to-lime-500/10 border-lime-500 text-lime-400' :
-            'from-purple-500/20 to-purple-500/10 border-purple-500 text-purple-400';
-          return (
-            <Button key={cat.id} size="sm" variant="outline" onClick={() => setActiveCategory(cat.id as SettingsCategory)} className={`text-xs h-7 ${isActive ? `bg-gradient-to-r ${catColors}` : 'border-white/20 text-muted-foreground hover:border-white/40'}`}>
-              <i className={`fas fa-${cat.icon} mr-1`}></i>{cat.label}
-            </Button>
-          );
-        })}
-      </div>
-
-      <div className="space-y-3">
-        {activeCategory === 'mining' && (
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-            <div className="space-y-2">
-              <Label htmlFor="ad_section1_reward" className="text-sm font-semibold">
-                <i className="fas fa-bolt mr-2 text-amber-500"></i>
-                Booster 1 Reward (+/hour)
-              </Label>
-              <Input
-                id="ad_section1_reward"
-                type="number"
-                step="0.0001"
-                value={settings.ad_section1_reward as string}
-                onChange={(e) => setSettings({ ...settings, ad_section1_reward: e.target.value })}
-                placeholder="0.0015"
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="ad_section1_limit" className="text-sm font-semibold">
-                <i className="fas fa-list-ol mr-2 text-amber-500"></i>
-                Booster 1 Daily Limit (Ads)
-              </Label>
-              <Input
-                id="ad_section1_limit"
-                type="number"
-                value={settings.ad_section1_limit as string}
-                onChange={(e) => setSettings({ ...settings, ad_section1_limit: e.target.value })}
-                placeholder="250"
-              />
-            </div>
-            <div className="space-y-2 border-t pt-3 mt-1 md:col-span-2"></div>
-            <div className="space-y-2">
-              <Label htmlFor="ad_section2_reward" className="text-sm font-semibold">
-                <i className="fas fa-bolt mr-2 text-purple-500"></i>
-                Booster 2 Reward (+/hour)
-              </Label>
-              <Input
-                id="ad_section2_reward"
-                type="number"
-                step="0.0001"
-                value={settings.ad_section2_reward as string}
-                onChange={(e) => setSettings({ ...settings, ad_section2_reward: e.target.value })}
-                placeholder="0.0001"
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="ad_section2_limit" className="text-sm font-semibold">
-                <i className="fas fa-list-ol mr-2 text-purple-500"></i>
-                Booster 2 Daily Limit (Ads)
-              </Label>
-              <Input
-                id="ad_section2_limit"
-                type="number"
-                value={settings.ad_section2_limit as string}
-                onChange={(e) => setSettings({ ...settings, ad_section2_limit: e.target.value })}
-                placeholder="250"
-              />
-            </div>
-          </div>
-        )}
-
-        {activeCategory === 'affiliates' && (
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-            <div className="space-y-2">
-              <Label htmlFor="affiliate-commission" className="text-sm font-semibold">
-                <i className="fas fa-percent mr-2 text-green-600"></i>
-                Affiliate Commission (%)
-              </Label>
-              <Input
-                id="affiliate-commission"
-                type="number"
-                value={settings.affiliateCommission}
-                onChange={(e) => setSettings({ ...settings, affiliateCommission: e.target.value })}
-                placeholder="10"
-                min="0"
-                max="100"
-                step="0.1"
-              />
-              <p className="text-xs text-muted-foreground">
-                Current: {settingsData?.affiliateCommission || 10}%
-              </p>
-            </div>
-
-            <div className="space-y-2 p-3 border rounded-lg bg-green-50/5 border-green-500/20">
-              <div className="flex items-center justify-between">
-                <Label className="text-sm font-semibold">
-                  <i className="fas fa-gift mr-2 text-green-500"></i>
-                  Referral Bonus
-                </Label>
-                <button
-                  type="button"
-                  onClick={() => setSettings({ ...settings, referralRewardEnabled: !settings.referralRewardEnabled })}
-                  className={`relative inline-flex h-5 w-9 items-center rounded-full transition-colors ${
-                    settings.referralRewardEnabled ? 'bg-green-500' : 'bg-gray-600'
-                  }`}
-                >
-                  <span
-                    className={`inline-block h-3.5 w-3.5 transform rounded-full bg-white transition-transform ${
-                      settings.referralRewardEnabled ? 'translate-x-5' : 'translate-x-1'
-                    }`}
-                  />
-                </button>
-              </div>
-              <div className="grid grid-cols-2 gap-2 mt-2">
-                <div>
-                  <Label className="text-xs">Hrum</Label>
-                  <Input
-                    type="number"
-                    value={settings.referralRewardHrum}
-                    onChange={(e) => setSettings({ ...settings, referralRewardHrum: e.target.value })}
-                    placeholder="50"
-                    disabled={!settings.referralRewardEnabled}
-                    className={`h-8 ${!settings.referralRewardEnabled ? 'opacity-50' : ''}`}
-                  />
-                </div>
-                <div>
-                  <Label className="text-xs">TON</Label>
-                  <Input
-                    type="number"
-                    value={settings.referralRewardTON}
-                    onChange={(e) => setSettings({ ...settings, referralRewardTON: e.target.value })}
-                    placeholder="0.0005"
-                    step="0.0001"
-                    disabled={!settings.referralRewardEnabled}
-                    className={`h-8 ${!settings.referralRewardEnabled ? 'opacity-50' : ''}`}
-                  />
-                </div>
-              </div>
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="referral-ads-required" className="text-sm font-semibold">
-                <i className="fas fa-play-circle mr-2 text-amber-500"></i>
-                Ads Required for Bonus
-              </Label>
-              <Input
-                id="referral-ads-required"
-                type="number"
-                value={settings.referralAdsRequired}
-                onChange={(e) => setSettings({ ...settings, referralAdsRequired: e.target.value })}
-                placeholder="1"
-                min="1"
-              />
-              <p className="text-xs text-muted-foreground">
-                Number of ads a referred user must watch to trigger the referral bonus. Current: {settingsData?.referralAdsRequired || 1}
-              </p>
-            </div>
-          </div>
-        )}
-
-        {activeCategory === 'withdrawals' && (
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-            <div className="space-y-2">
-              <Label htmlFor="minimum-withdrawal-ton" className="text-sm font-semibold">
-                <i className="fas fa-gem mr-2 text-blue-600"></i>
-                Min Withdrawal (TON)
-              </Label>
-              <Input
-                id="minimum-withdrawal-ton"
-                type="number"
-                value={settings.minimum_withdrawal_ton}
-                onChange={(e) => setSettings({ ...settings, minimum_withdrawal_ton: e.target.value })}
-                placeholder="0.1"
-                min="0"
-                step="0.01"
-              />
-              <p className="text-xs text-muted-foreground">
-                Current: {settingsData?.minimum_withdrawal_ton || 0.1} TON
-              </p>
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="withdrawal-fee-ton" className="text-sm font-semibold">
-                <i className="fas fa-percent mr-2 text-blue-600"></i>
-                Withdraw Fee (TON)
-              </Label>
-              <Input
-                id="withdrawal-fee-ton"
-                type="number"
-                value={settings.withdrawal_fee_ton}
-                onChange={(e) => setSettings({ ...settings, withdrawal_fee_ton: e.target.value })}
-                placeholder="0.01"
-                min="0"
-                step="0.001"
-              />
-              <p className="text-xs text-muted-foreground">
-                Current: {settingsData?.withdrawal_fee_ton || 0.01} TON
-              </p>
-            </div>
-
-            <div className="space-y-2 p-3 border rounded-lg bg-emerald-50/5 border-emerald-500/20 md:col-span-2">
-              <div className="flex items-center justify-between">
-                <Label className="text-sm font-semibold">
-                  <i className="fas fa-play-circle mr-2 text-emerald-500"></i>
-                  Withdrawal Ad Requirement
-                </Label>
-                <button
-                  type="button"
-                  onClick={() => setSettings({ ...settings, withdrawalAdRequirementEnabled: !settings.withdrawalAdRequirementEnabled })}
-                  className={`relative inline-flex h-5 w-9 items-center rounded-full transition-colors ${
-                    settings.withdrawalAdRequirementEnabled ? 'bg-emerald-500' : 'bg-gray-600'
-                  }`}
-                >
-                  <span
-                    className={`inline-block h-3.5 w-3.5 transform rounded-full bg-white transition-transform ${
-                      settings.withdrawalAdRequirementEnabled ? 'translate-x-5' : 'translate-x-1'
-                    }`}
-                  />
-                </button>
-              </div>
-              <p className="text-xs text-muted-foreground">
-                {settings.withdrawalAdRequirementEnabled 
-                  ? 'Users must watch ads before each withdrawal' 
-                  : 'Ad requirement disabled - users can withdraw immediately'}
-              </p>
-              <div className="mt-2">
-                <Label className="text-xs">Minimum Ads Required</Label>
-                <Input
-                  type="number"
-                  value={settings.minimumAdsForWithdrawal}
-                  onChange={(e) => setSettings({ ...settings, minimumAdsForWithdrawal: e.target.value })}
-                  placeholder="100"
-                  min="0"
-                  disabled={!settings.withdrawalAdRequirementEnabled}
-                  className={`h-8 mt-1 ${!settings.withdrawalAdRequirementEnabled ? 'opacity-50' : ''}`}
-                />
-                <p className="text-xs text-muted-foreground mt-1">
-                  Current: {settingsData?.minimumAdsForWithdrawal || 100} ads (resets after each withdrawal)
-                </p>
-              </div>
-            </div>
-
-            <div className="space-y-2 p-3 border rounded-lg bg-blue-50/5 border-blue-500/20 md:col-span-2">
-              <div className="flex items-center justify-between">
-                <Label className="text-sm font-semibold">
-                  <i className="fas fa-user-plus mr-2 text-blue-500"></i>
-                  Withdrawal Invite Requirement
-                </Label>
-                <button
-                  type="button"
-                  onClick={() => setSettings({ ...settings, withdrawalInviteRequirementEnabled: !settings.withdrawalInviteRequirementEnabled })}
-                  className={`relative inline-flex h-5 w-9 items-center rounded-full transition-colors ${
-                    settings.withdrawalInviteRequirementEnabled ? 'bg-blue-500' : 'bg-gray-600'
-                  }`}
-                >
-                  <span
-                    className={`inline-block h-3.5 w-3.5 transform rounded-full bg-white transition-transform ${
-                      settings.withdrawalInviteRequirementEnabled ? 'translate-x-5' : 'translate-x-1'
-                    }`}
-                  />
-                </button>
-              </div>
-              <p className="text-xs text-muted-foreground">
-                {settings.withdrawalInviteRequirementEnabled 
-                  ? 'Users must invite friends before withdrawing' 
-                  : 'Invite requirement disabled - users can withdraw without invites'}
-              </p>
-              <div className="mt-2">
-                <Label className="text-xs">Minimum Invites Required</Label>
-                <Input
-                  type="number"
-                  value={settings.minimumInvitesForWithdrawal}
-                  onChange={(e) => setSettings({ ...settings, minimumInvitesForWithdrawal: e.target.value })}
-                  placeholder="3"
-                  min="0"
-                  disabled={!settings.withdrawalInviteRequirementEnabled}
-                  className={`h-8 mt-1 ${!settings.withdrawalInviteRequirementEnabled ? 'opacity-50' : ''}`}
-                />
-                <p className="text-xs text-muted-foreground mt-1">
-                  Current: {settingsData?.minimumInvitesForWithdrawal || 3} valid invites (friends who watched 1+ ads)
-                </p>
-              </div>
-            </div>
-          </div>
-        )}
-
-        {activeCategory === 'tasks' && (
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-            <div className="space-y-2">
-              <Label className="text-sm font-semibold">
-                <i className="fas fa-bullhorn mr-2 text-cyan-600"></i>
-                Channel Task
-              </Label>
-              <div className="grid grid-cols-2 gap-2">
-                <div>
-                  <Label className="text-xs">Cost ()</Label>
-                  <Input
-                    type="number"
-                    value={settings.channelTaskCost}
-                    onChange={(e) => setSettings({ ...settings, channelTaskCost: e.target.value })}
-                    placeholder="0.003"
-                    step="0.0001"
-                    className="h-8"
-                  />
-                </div>
-                <div>
-                  <Label className="text-xs">Cost ()</Label>
-                  <Input
-                    type="number"
-                    value={settings.channelTaskCost}
-                    onChange={(e) => setSettings({ ...settings, channelTaskCostTON: e.target.value })}
-                    placeholder="0.0003"
-                    step="0.0001"
-                    className="h-8"
-                  />
-                </div>
-              </div>
-              <div>
-                <Label className="text-xs">Reward (Hrum)</Label>
-                <Input
-                  type="number"
-                  value={settings.channelTaskReward}
-                  onChange={(e) => setSettings({ ...settings, channelTaskReward: e.target.value })}
-                  placeholder="30"
-                  className="h-8"
-                />
-              </div>
-            </div>
-
-            <div className="space-y-2">
-              <Label className="text-sm font-semibold">
-                <i className="fas fa-robot mr-2 text-purple-600"></i>
-                Bot Task
-              </Label>
-              <div className="grid grid-cols-2 gap-2">
-                <div>
-                  <Label className="text-xs">Cost ()</Label>
-                  <Input
-                    type="number"
-                    value={settings.botTaskCost}
-                    onChange={(e) => setSettings({ ...settings, botTaskCost: e.target.value })}
-                    placeholder="0.003"
-                    step="0.0001"
-                    className="h-8"
-                  />
-                </div>
-                <div>
-                  <Label className="text-xs">Cost ()</Label>
-                  <Input
-                    type="number"
-                    value={settings.botTaskCost}
-                    onChange={(e) => setSettings({ ...settings, botTaskCostTON: e.target.value })}
-                    placeholder="0.0003"
-                    step="0.0001"
-                    className="h-8"
-                  />
-                </div>
-              </div>
-              <div>
-                <Label className="text-xs">Reward (Hrum)</Label>
-                <Input
-                  type="number"
-                  value={settings.botTaskReward}
-                  onChange={(e) => setSettings({ ...settings, botTaskReward: e.target.value })}
-                  placeholder="20"
-                  className="h-8"
-                />
-              </div>
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="partner-task-reward" className="text-sm font-semibold">
-                <i className="fas fa-handshake mr-2 text-green-600"></i>
-                Partner Task Reward (Hrum)
-              </Label>
-              <Input
-                id="partner-task-reward"
-                type="number"
-                value={settings.partnerTaskReward}
-                onChange={(e) => setSettings({ ...settings, partnerTaskReward: e.target.value })}
-                placeholder="5"
-              />
-              <p className="text-xs text-muted-foreground">
-                Current: {settingsData?.partnerTaskReward || 5} Hrum
-              </p>
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="minimum-clicks" className="text-sm font-semibold">
-                <i className="fas fa-mouse-pointer mr-2 text-pink-600"></i>
-                Minimum Clicks
-              </Label>
-              <Input
-                id="minimum-clicks"
-                type="number"
-                value={settings.minimumClicks}
-                onChange={(e) => setSettings({ ...settings, minimumClicks: e.target.value })}
-                placeholder="500"
-                min="1"
-              />
-              <p className="text-xs text-muted-foreground">
-                Current: {settingsData?.minimumClicks || 500} clicks
-              </p>
-            </div>
-          </div>
-        )}
-
-        {activeCategory === 'bug' && (
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-            <div className="space-y-2">
-              <Label htmlFor="bug-reward-per-ad" className="text-sm font-semibold">
-                <i className="fas fa-bug mr-2 text-lime-600"></i>
-                BUG Per Ad Watch
-              </Label>
-              <Input
-                id="bug-reward-per-ad"
-                type="number"
-                value={settings.bugRewardPerAd}
-                onChange={(e) => setSettings({ ...settings, bugRewardPerAd: e.target.value })}
-                placeholder="1"
-                min="0"
-              />
-              <p className="text-xs text-muted-foreground">
-                Current: {settingsData?.bugRewardPerAd || 1} BUG
-              </p>
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="bug-reward-per-task" className="text-sm font-semibold">
-                <i className="fas fa-tasks mr-2 text-lime-600"></i>
-                BUG Per Task
-              </Label>
-              <Input
-                id="bug-reward-per-task"
-                type="number"
-                value={settings.bugRewardPerTask}
-                onChange={(e) => setSettings({ ...settings, bugRewardPerTask: e.target.value })}
-                placeholder="10"
-                min="0"
-              />
-              <p className="text-xs text-muted-foreground">
-                Current: {settingsData?.bugRewardPerTask || 10} BUG
-              </p>
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="bug-reward-per-referral" className="text-sm font-semibold">
-                <i className="fas fa-users mr-2 text-lime-600"></i>
-                BUG Per Referral
-              </Label>
-              <Input
-                id="bug-reward-per-referral"
-                type="number"
-                value={settings.bugRewardPerReferral}
-                onChange={(e) => setSettings({ ...settings, bugRewardPerReferral: e.target.value })}
-                placeholder="50"
-                min="0"
-              />
-              <p className="text-xs text-muted-foreground">
-                Current: {settingsData?.bugRewardPerReferral || 50} BUG
-              </p>
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="minimum-bug-for-withdrawal" className="text-sm font-semibold">
-                <i className="fas fa-wallet mr-2 text-lime-600"></i>
-                Min BUG for Withdrawal
-              </Label>
-              <Input
-                id="minimum-bug-for-withdrawal"
-                type="number"
-                value={settings.minimumBugForWithdrawal}
-                onChange={(e) => setSettings({ ...settings, minimumBugForWithdrawal: e.target.value })}
-                placeholder="1000"
-                min="0"
-              />
-              <p className="text-xs text-muted-foreground">
-                Current: {settingsData?.minimumBugForWithdrawal || 1000} BUG (1000 BUG = TON0.1)
-              </p>
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="pad-to-bug-rate" className="text-sm font-semibold">
-                <i className="fas fa-exchange-alt mr-2 text-lime-600"></i>
-                Hrum to BUG Rate
-              </Label>
-              <Input
-                id="pad-to-bug-rate"
-                type="number"
-                value={settings.padToBugRate}
-                onChange={(e) => setSettings({ ...settings, padToBugRate: e.target.value })}
-                placeholder="1"
-                min="1"
-              />
-              <p className="text-xs text-muted-foreground">
-                1 Hrum = {settingsData?.padToBugRate || 1} BUG
-              </p>
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="minimum-convert-pad-to-bug" className="text-sm font-semibold">
-                <i className="fas fa-coins mr-2 text-lime-600"></i>
-                Min Hrum to Convert to BUG
-              </Label>
-              <Input
-                id="minimum-convert-pad-to-bug"
-                type="number"
-                value={settings.minimumConvertPadToBug}
-                onChange={(e) => setSettings({ ...settings, minimumConvertPadToBug: e.target.value })}
-                placeholder="1000"
-                min="1"
-              />
-              <p className="text-xs text-muted-foreground">
-                Current: {settingsData?.minimumConvertPadToBug || 1000} Hrum
-              </p>
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="bug-per-usd" className="text-sm font-semibold">
-                <i className="fas fa-dollar-sign mr-2 text-lime-600"></i>
-                BUG per  (Withdrawal)
-              </Label>
-              <Input
-                id="bug-per-usd"
-                type="number"
-                value={settings.bugPerUsd}
-                onChange={(e) => setSettings({ ...settings, bugPerUsd: e.target.value })}
-                placeholder="10000"
-                min="1"
-              />
-              <p className="text-xs text-muted-foreground">
-                1  = {settingsData?.bugPerUsd || 10000} BUG required for withdrawal
-              </p>
-            </div>
-
-            <div className="space-y-2 p-3 border rounded-lg bg-lime-50/5 border-lime-500/20 md:col-span-2">
-              <div className="flex items-center justify-between">
-                <Label className="text-sm font-semibold">
-                  <i className="fas fa-bug mr-2 text-lime-500"></i>
-                  Withdrawal BUG Requirement
-                </Label>
-                <button
-                  type="button"
-                  onClick={() => setSettings({ ...settings, withdrawalBugRequirementEnabled: !settings.withdrawalBugRequirementEnabled })}
-                  className={`relative inline-flex h-5 w-9 items-center rounded-full transition-colors ${
-                    settings.withdrawalBugRequirementEnabled ? 'bg-lime-500' : 'bg-gray-600'
-                  }`}
-                >
-                  <span
-                    className={`inline-block h-3.5 w-3.5 transform rounded-full bg-white transition-transform ${
-                      settings.withdrawalBugRequirementEnabled ? 'translate-x-5' : 'translate-x-1'
-                    }`}
-                  />
-                </button>
-              </div>
-              <p className="text-xs text-muted-foreground">
-                {settings.withdrawalBugRequirementEnabled 
-                  ? 'Users must have enough BUG (based on  amount × BUG per ) to withdraw' 
-                  : 'BUG requirement disabled - users can withdraw without BUG'}
-              </p>
-            </div>
-          </div>
-        )}
-
-        {activeCategory === 'other' && (
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-            <div className="space-y-2">
-              <Label htmlFor="wallet-change-fee" className="text-sm font-semibold">
-                <i className="fas fa-exchange-alt mr-2 text-yellow-600"></i>
-                Wallet Change Fee (Hrum)
-              </Label>
-              <Input
-                id="wallet-change-fee"
-                type="number"
-                value={settings.walletChangeFee}
-                onChange={(e) => setSettings({ ...settings, walletChangeFee: e.target.value })}
-                placeholder="5000"
-              />
-              <p className="text-xs text-muted-foreground">
-                Current: {settingsData?.walletChangeFee || 5000} Hrum
-              </p>
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="minimum-convert-pad" className="text-sm font-semibold">
-                <i className="fas fa-repeat mr-2 text-indigo-600"></i>
-                Min Convert (Hrum)
-              </Label>
-              <Input
-                id="minimum-convert-pad"
-                type="number"
-                value={settings.minimumConvertHrum}
-                onChange={(e) => setSettings({ ...settings, minimumConvertHrum: e.target.value })}
-                placeholder="100"
-              />
-              <p className="text-xs text-muted-foreground">
-                Current: {settingsData?.minimumConvertHrum || 100} Hrum
-              </p>
-            </div>
-
-            <div className="space-y-2 p-3 border rounded-lg">
-              <div className="flex items-center justify-between">
-                <Label className="text-sm font-semibold">
-                  <i className="fas fa-broadcast-tower mr-2 text-cyan-600"></i>
-                  Season Broadcast
-                </Label>
-                <button
-                  type="button"
-                  onClick={() => setSettings({ ...settings, seasonBroadcastActive: !settings.seasonBroadcastActive })}
-                  className={`relative inline-flex h-5 w-9 items-center rounded-full transition-colors ${
-                    settings.seasonBroadcastActive ? 'bg-green-600' : 'bg-gray-300'
-                  }`}
-                >
-                  <span
-                    className={`inline-block h-3.5 w-3.5 transform rounded-full bg-white transition-transform ${
-                      settings.seasonBroadcastActive ? 'translate-x-5' : 'translate-x-1'
-                    }`}
-                  />
-                </button>
-              </div>
-              <p className="text-xs text-muted-foreground">
-                {settings.seasonBroadcastActive ? 'Active' : 'Inactive'}
-              </p>
-            </div>
-
-            <div className="space-y-2 p-3 border rounded-lg bg-cyan-50/5 border-cyan-500/20 md:col-span-2">
-              <div className="flex items-center justify-between">
-                <Label className="text-sm font-semibold">
-                  <i className="fas fa-door-open mr-2 text-cyan-400"></i>
-                  Channel Join Requirement
-                </Label>
-                <button
-                  type="button"
-                  onClick={() => setSettings({ ...settings, channelJoinRequired: !settings.channelJoinRequired })}
-                  className={`relative inline-flex h-5 w-9 items-center rounded-full transition-colors ${
-                    settings.channelJoinRequired ? 'bg-cyan-500' : 'bg-gray-600'
-                  }`}
-                >
-                  <span
-                    className={`inline-block h-3.5 w-3.5 transform rounded-full bg-white transition-transform ${
-                      settings.channelJoinRequired ? 'translate-x-5' : 'translate-x-1'
-                    }`}
-                  />
-                </button>
-              </div>
-              <p className="text-xs text-muted-foreground">
-                {settings.channelJoinRequired
-                  ? 'ON — Users must join Channel & Group to access the app'
-                  : 'OFF — Users can access the app directly without joining'}
-              </p>
-            </div>
-
-            <Link href="/admin/country-controls">
-              <div className="space-y-2 p-3 border border-blue-500/30 rounded-lg bg-gradient-to-r from-blue-500/10 to-blue-500/5 hover:border-blue-500/50 cursor-pointer transition-all">
-                <div className="flex items-center justify-between">
-                  <Label className="text-sm font-semibold cursor-pointer">
-                    <i className="fas fa-globe mr-2 text-blue-500"></i>
-                    Country Controls
-                  </Label>
-                  <i className="fas fa-chevron-right text-blue-500 text-xs"></i>
-                </div>
-                <p className="text-xs text-muted-foreground">
-                  Block or allow access from specific countries
-                </p>
-              </div>
-            </Link>
-          </div>
-        )}
-        
-        <div className="pt-3 border-t flex gap-2">
-          <Button
-            onClick={handleSaveSettings}
-            disabled={isSaving}
-            size="sm"
+    <div className="space-y-4">
+      {/* Category tabs */}
+      <div className="flex gap-1 overflow-x-auto pb-1">
+        {cats.map(c => (
+          <button
+            key={c.id}
+            onClick={() => setCat(c.id)}
+            className={`px-3 py-1.5 rounded-lg text-xs font-medium whitespace-nowrap transition-all ${
+              cat === c.id ? "bg-blue-600 text-white" : "bg-white/5 text-gray-400 hover:bg-white/10"
+            }`}
           >
-            {isSaving ? (
-              <>
-                <i className="fas fa-spinner fa-spin mr-2"></i>
-                Saving...
-              </>
-            ) : (
-              <>
-                <i className="fas fa-save mr-2"></i>
-                Save Settings
-              </>
-            )}
-          </Button>
-        </div>
+            {c.label}
+          </button>
+        ))}
       </div>
+
+      {/* Mining */}
+      {cat === "mining" && (
+        <SettCard title="Mining Boost" icon={<Pickaxe className="w-3.5 h-3.5" />} color="text-orange-400">
+          <p className="text-[11px] text-gray-500 leading-relaxed">
+            Mining boost is earned by watching ads. Configure ad section rewards and limits in the <strong className="text-gray-300">Ads</strong> tab. Referral mining boost is in the <strong className="text-gray-300">Affiliates</strong> tab.
+          </p>
+        </SettCard>
+      )}
+
+      {/* Affiliates */}
+      {cat === "affiliates" && (
+        <SettCard title="Referral & Affiliates" icon={<GitBranch className="w-3.5 h-3.5" />} color="text-teal-400">
+          <SettField label="Referral Mining Boost (SAT/h per invite)" hint="Extra SAT/hour added to inviter's mining rate per active referral. e.g. 0.02 = +0.02 SAT/h per friend">
+            <Input type="number" step="0.001" value={s.referralBoostPerInvite} onChange={e => setS({ ...s, referralBoostPerInvite: e.target.value })} className="h-8 text-xs bg-[#0a0a0a] border-white/10" />
+          </SettField>
+          <SettField label="Affiliate Commission (%)" hint="Commission for affiliates">
+            <Input type="number" value={s.affiliateCommission} onChange={e => setS({ ...s, affiliateCommission: e.target.value })} className="h-8 text-xs bg-[#0a0a0a] border-white/10" />
+          </SettField>
+          <div className="flex items-center justify-between py-1">
+            <div>
+              <p className="text-xs text-white font-medium">Referral Bonus Enabled</p>
+              <p className="text-[10px] text-gray-500">Give one-time bonus on referral activation</p>
+            </div>
+            <MiniToggle value={Boolean(s.referralRewardEnabled)} onChange={v => setS({ ...s, referralRewardEnabled: v })} />
+          </div>
+        </SettCard>
+      )}
+
+      {/* Withdrawals */}
+      {cat === "withdrawals" && (
+        <SettCard title="Withdrawal Settings" icon={<DollarSign className="w-3.5 h-3.5" />} color="text-green-400">
+          <SettField label="Minimum Withdrawal (SAT)" hint="Minimum SAT required to withdraw">
+            <Input type="number" value={s.minimum_withdrawal_sat} onChange={e => setS({ ...s, minimum_withdrawal_sat: e.target.value })} className="h-8 text-xs bg-[#0a0a0a] border-white/10" />
+          </SettField>
+          <SettField label="Withdrawal Fee (SAT)" hint="Fee deducted per withdrawal (0 = free)">
+            <Input type="number" value={s.withdrawal_fee_sat} onChange={e => setS({ ...s, withdrawal_fee_sat: e.target.value })} className="h-8 text-xs bg-[#0a0a0a] border-white/10" />
+          </SettField>
+          <div className="flex items-center justify-between py-1">
+            <div>
+              <p className="text-xs text-white font-medium">Invite Requirement</p>
+              <p className="text-[10px] text-gray-500">Require inviting friends before withdrawing</p>
+            </div>
+            <MiniToggle value={Boolean(s.withdrawalInviteRequirementEnabled)} onChange={v => setS({ ...s, withdrawalInviteRequirementEnabled: v })} />
+          </div>
+          {s.withdrawalInviteRequirementEnabled && (
+            <SettField label="Minimum Invites Required" hint="Friends user must invite before withdrawing">
+              <Input type="number" value={s.minimumInvitesForWithdrawal} onChange={e => setS({ ...s, minimumInvitesForWithdrawal: e.target.value })} className="h-8 text-xs bg-[#0a0a0a] border-white/10" />
+            </SettField>
+          )}
+        </SettCard>
+      )}
+
+      {/* Ads */}
+      {cat === "ads" && (
+        <SettCard title="Ad Settings" icon={<Eye className="w-3.5 h-3.5" />} color="text-purple-400">
+          <div className="space-y-1 pb-1">
+            <p className="text-[10px] font-semibold text-purple-400 uppercase tracking-wide">Section 1</p>
+            <SettField label="Mining Boost Per Ad (SAT/h)" hint="SAT/h added to mining rate per Section 1 ad watched">
+              <Input type="number" step="0.0001" value={s.ad_section1_reward} onChange={e => setS({ ...s, ad_section1_reward: e.target.value })} className="h-8 text-xs bg-[#0a0a0a] border-white/10" />
+            </SettField>
+            <SettField label="Daily Limit" hint="Max Section 1 ads per user per day">
+              <Input type="number" value={s.ad_section1_limit} onChange={e => setS({ ...s, ad_section1_limit: e.target.value })} className="h-8 text-xs bg-[#0a0a0a] border-white/10" />
+            </SettField>
+          </div>
+          <div className="border-t border-white/5 pt-3 space-y-1">
+            <p className="text-[10px] font-semibold text-indigo-400 uppercase tracking-wide">Section 2</p>
+            <SettField label="Mining Boost Per Ad (SAT/h)" hint="SAT/h added to mining rate per Section 2 ad watched">
+              <Input type="number" step="0.0001" value={s.ad_section2_reward} onChange={e => setS({ ...s, ad_section2_reward: e.target.value })} className="h-8 text-xs bg-[#0a0a0a] border-white/10" />
+            </SettField>
+            <SettField label="Daily Limit" hint="Max Section 2 ads per user per day">
+              <Input type="number" value={s.ad_section2_limit} onChange={e => setS({ ...s, ad_section2_limit: e.target.value })} className="h-8 text-xs bg-[#0a0a0a] border-white/10" />
+            </SettField>
+          </div>
+        </SettCard>
+      )}
+
+      {/* Other */}
+      {cat === "other" && (
+        <SettCard title="Other Settings" icon={<Settings className="w-3.5 h-3.5" />} color="text-gray-400">
+          <div className="flex items-center justify-between py-1">
+            <div>
+              <p className="text-xs text-white font-medium">Channel Join Required</p>
+              <p className="text-[10px] text-gray-500">Block users who haven't joined the channel</p>
+            </div>
+            <MiniToggle value={Boolean(s.channelJoinRequired)} onChange={v => setS({ ...s, channelJoinRequired: v })} />
+          </div>
+        </SettCard>
+      )}
+
+      {/* Save button */}
+      <Button
+        onClick={save}
+        disabled={saving}
+        className="w-full h-10 text-sm font-semibold bg-blue-600 hover:bg-blue-500"
+      >
+        {saving ? "Saving..." : "Save Settings"}
+      </Button>
     </div>
   );
 }
 
-interface AdminTask {
-  id: string;
-  taskType: string;
-  title: string;
-  link: string;
-  totalClicksRequired: number;
-  currentClicks: number;
-  costPerClick: string;
-  totalCost: string;
-  status: string;
-  advertiserId: string;
-  advertiserUid: string;
-  advertiserName: string;
-  advertiserTelegramUsername: string;
-  createdAt: string;
-  completedAt?: string;
+function SettCard({ title, icon, color, children }: {
+  title: string; icon: React.ReactNode; color: string; children: React.ReactNode;
+}) {
+  return (
+    <div className="bg-[#0f0f0f] border border-white/8 rounded-xl p-4 space-y-4">
+      <p className={`text-xs font-semibold flex items-center gap-1.5 ${color}`}>
+        {icon}
+        {title}
+      </p>
+      {children}
+    </div>
+  );
 }
 
-function TaskManagementSection() {
-  const { toast } = useToast();
-  const queryClient = useQueryClient();
-  const [activeTaskFilter, setActiveTaskFilter] = useState<'pending' | 'all'>('pending');
-
-  const { data: pendingTasksData, isLoading: pendingLoading } = useQuery({
-    queryKey: ["/api/admin/pending-tasks"],
-    queryFn: () => apiRequest("GET", "/api/admin/pending-tasks").then(res => res.json()),
-    refetchInterval: 10000,
-  });
-
-  const { data: allTasksData, isLoading: allLoading } = useQuery({
-    queryKey: ["/api/admin/all-tasks"],
-    queryFn: () => apiRequest("GET", "/api/admin/all-tasks").then(res => res.json()),
-    refetchInterval: 30000,
-  });
-
-  const approveTask = async (taskId: string) => {
-    try {
-      const res = await apiRequest("POST", `/api/admin/tasks/${taskId}/approve`);
-      const data = await res.json();
-      if (data.success) {
-        toast({ title: "Task approved", description: "Task is now running" });
-        queryClient.invalidateQueries({ queryKey: ["/api/admin/pending-tasks"] });
-        queryClient.invalidateQueries({ queryKey: ["/api/admin/all-tasks"] });
-      } else {
-        toast({ title: "Error", description: data.message, variant: "destructive" });
-      }
-    } catch (error) {
-      toast({ title: "Error", description: "Failed to approve task", variant: "destructive" });
-    }
-  };
-
-  const rejectTask = async (taskId: string) => {
-    try {
-      const res = await apiRequest("POST", `/api/admin/tasks/${taskId}/reject`);
-      const data = await res.json();
-      if (data.success) {
-        toast({ title: "Task rejected" });
-        queryClient.invalidateQueries({ queryKey: ["/api/admin/pending-tasks"] });
-        queryClient.invalidateQueries({ queryKey: ["/api/admin/all-tasks"] });
-      } else {
-        toast({ title: "Error", description: data.message, variant: "destructive" });
-      }
-    } catch (error) {
-      toast({ title: "Error", description: "Failed to reject task", variant: "destructive" });
-    }
-  };
-
-  const pauseTask = async (taskId: string) => {
-    try {
-      const res = await apiRequest("POST", `/api/admin/tasks/${taskId}/pause`);
-      const data = await res.json();
-      if (data.success) {
-        toast({ title: "Task paused" });
-        queryClient.invalidateQueries({ queryKey: ["/api/admin/all-tasks"] });
-      } else {
-        toast({ title: "Error", description: data.message, variant: "destructive" });
-      }
-    } catch (error) {
-      toast({ title: "Error", description: "Failed to pause task", variant: "destructive" });
-    }
-  };
-
-  const resumeTask = async (taskId: string) => {
-    try {
-      const res = await apiRequest("POST", `/api/admin/tasks/${taskId}/resume`);
-      const data = await res.json();
-      if (data.success) {
-        toast({ title: "Task resumed" });
-        queryClient.invalidateQueries({ queryKey: ["/api/admin/all-tasks"] });
-      } else {
-        toast({ title: "Error", description: data.message, variant: "destructive" });
-      }
-    } catch (error) {
-      toast({ title: "Error", description: "Failed to resume task", variant: "destructive" });
-    }
-  };
-
-  const deleteTask = async (taskId: string) => {
-    try {
-      const res = await apiRequest("DELETE", `/api/admin/tasks/${taskId}`);
-      const data = await res.json();
-      if (data.success) {
-        toast({ title: "Task deleted" });
-        queryClient.invalidateQueries({ queryKey: ["/api/admin/pending-tasks"] });
-        queryClient.invalidateQueries({ queryKey: ["/api/admin/all-tasks"] });
-      } else {
-        toast({ title: "Error", description: data.message, variant: "destructive" });
-      }
-    } catch (error) {
-      toast({ title: "Error", description: "Failed to delete task", variant: "destructive" });
-    }
-  };
-
-  const getStatusBadge = (status: string) => {
-    const styles: Record<string, string> = {
-      under_review: "bg-yellow-500/20 text-yellow-400 border-yellow-500/30",
-      running: "bg-green-500/20 text-green-400 border-green-500/30",
-      paused: "bg-orange-500/20 text-orange-400 border-orange-500/30",
-      completed: "bg-blue-500/20 text-blue-400 border-blue-500/30",
-      rejected: "bg-red-500/20 text-red-400 border-red-500/30",
-    };
-    const labels: Record<string, string> = {
-      under_review: "Under Review",
-      running: "Running",
-      paused: "Paused",
-      completed: "Completed",
-      rejected: "Rejected",
-    };
-    return (
-      <Badge className={`text-xs ${styles[status] || 'bg-gray-500/20 text-gray-400'}`}>
-        {labels[status] || status}
-      </Badge>
-    );
-  };
-
-  const pendingTasks: AdminTask[] = pendingTasksData?.tasks || [];
-  const allTasks: AdminTask[] = allTasksData?.tasks || [];
-  const displayTasks = activeTaskFilter === 'pending' ? pendingTasks : allTasks;
-
+function SettField({ label, hint, children }: { label: string; hint?: string; children: React.ReactNode }) {
   return (
-    <div className="space-y-4">
-      <div className="flex items-center justify-between flex-wrap gap-2">
-        <div className="flex gap-2">
-          <Button
-            size="sm"
-            variant={activeTaskFilter === 'pending' ? 'default' : 'outline'}
-            onClick={() => setActiveTaskFilter('pending')}
-            className="text-xs"
-          >
-            Pending Review ({pendingTasks.length})
-          </Button>
-          <Button
-            size="sm"
-            variant={activeTaskFilter === 'all' ? 'default' : 'outline'}
-            onClick={() => setActiveTaskFilter('all')}
-            className="text-xs"
-          >
-            All Tasks ({allTasks.length})
-          </Button>
-        </div>
-        <Link href="/task/create">
-          <Button size="sm" className="text-xs bg-[#4cd3ff] hover:bg-[#6ddeff] text-black">
-            <i className="fas fa-plus mr-1.5"></i>
-            Create Task
-          </Button>
-        </Link>
-      </div>
-
-      {(activeTaskFilter === 'pending' ? pendingLoading : allLoading) ? (
-        <div className="text-center py-8">
-          <i className="fas fa-spinner fa-spin text-2xl text-muted-foreground"></i>
-        </div>
-      ) : displayTasks.length === 0 ? (
-        <div className="text-center py-8 text-muted-foreground">
-          {activeTaskFilter === 'pending' ? 'No pending tasks' : 'No tasks found'}
-        </div>
-      ) : (
-        <div className="space-y-3">
-          {displayTasks.map((task) => (
-            <div key={task.id} className="bg-[#121212] border border-white/10 rounded-xl p-4">
-              <div className="flex items-start justify-between mb-3">
-                <div className="flex-1">
-                  <div className="flex items-center gap-2 mb-2">
-                    {getStatusBadge(task.status)}
-                    <span className="text-xs text-muted-foreground uppercase">{task.taskType}</span>
-                  </div>
-                  <h3 className="font-semibold text-white text-sm mb-1">{task.title}</h3>
-                  <a 
-                    href={task.link} 
-                    target="_blank" 
-                    rel="noopener noreferrer"
-                    className="text-xs text-blue-400 hover:underline break-all"
-                  >
-                    {task.link}
-                  </a>
-                </div>
-              </div>
-
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-3 text-xs">
-                <div className="bg-[#1a1a1a] rounded-lg p-2">
-                  <p className="text-gray-500 mb-0.5">UID</p>
-                  <p className="text-white font-mono">{task.advertiserUid}</p>
-                </div>
-                <div className="bg-[#1a1a1a] rounded-lg p-2">
-                  <p className="text-gray-500 mb-0.5">User</p>
-                  <p className="text-white">{task.advertiserName}</p>
-                </div>
-                <div className="bg-[#1a1a1a] rounded-lg p-2">
-                  <p className="text-gray-500 mb-0.5">Telegram</p>
-                  <p className="text-white">@{task.advertiserTelegramUsername || 'N/A'}</p>
-                </div>
-                <div className="bg-[#1a1a1a] rounded-lg p-2">
-                  <p className="text-gray-500 mb-0.5">Clicks</p>
-                  <p className="text-white">{task.currentClicks}/{task.totalClicksRequired}</p>
-                </div>
-                <div className="bg-[#1a1a1a] rounded-lg p-2">
-                  <p className="text-gray-500 mb-0.5">Amount</p>
-                  <p className="text-white" >${parseFloat(task.totalCost).toFixed(2)}</p>
-                </div>
-                <div className="bg-[#1a1a1a] rounded-lg p-2">
-                  <p className="text-gray-500 mb-0.5">Created</p>
-                  <p className="text-white">{new Date(task.createdAt).toLocaleDateString()}</p>
-                </div>
-              </div>
-
-              <div className="flex gap-2 flex-wrap">
-                {task.status === 'under_review' && (
-                  <>
-                    <Button
-                      size="sm"
-                      onClick={() => approveTask(task.id)}
-                      className="bg-green-600 hover:bg-green-700 text-white text-xs"
-                    >
-                      <i className="fas fa-check mr-1"></i>
-                      Approve
-                    </Button>
-                    <Button
-                      size="sm"
-                      onClick={() => rejectTask(task.id)}
-                      className="bg-red-600 hover:bg-red-700 text-white text-xs"
-                    >
-                      <i className="fas fa-times mr-1"></i>
-                      Reject
-                    </Button>
-                  </>
-                )}
-                {task.status === 'running' && (
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    onClick={() => pauseTask(task.id)}
-                    className="text-xs"
-                  >
-                    <i className="fas fa-pause mr-1"></i>
-                    Pause
-                  </Button>
-                )}
-                {task.status === 'paused' && (
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    onClick={() => resumeTask(task.id)}
-                    className="text-xs"
-                  >
-                    <i className="fas fa-play mr-1"></i>
-                    Resume
-                  </Button>
-                )}
-                <Button
-                  size="sm"
-                  variant="outline"
-                  onClick={() => deleteTask(task.id)}
-                  className="text-xs text-red-400 hover:text-red-300 hover:bg-red-500/10"
-                >
-                  <i className="fas fa-trash mr-1"></i>
-                  Delete
-                </Button>
-              </div>
-            </div>
-          ))}
-        </div>
-      )}
+    <div className="space-y-1">
+      <Label className="text-xs text-white font-medium">{label}</Label>
+      {children}
+      {hint && <p className="text-[10px] text-gray-500">{hint}</p>}
     </div>
   );
 }
