@@ -3,11 +3,8 @@ import { useQueryClient } from "@tanstack/react-query";
 
 interface MembershipStatus {
   channelMember: boolean;
-  groupMember: boolean;
   channelUrl: string;
-  groupUrl: string;
   channelName: string;
-  groupName: string;
 }
 
 interface ChannelJoinPopupProps {
@@ -47,16 +44,13 @@ export default function ChannelJoinPopup({ telegramId, onVerified }: ChannelJoin
       if (data.success) {
         setMembershipStatus({
           channelMember: data.channelMember || false,
-          groupMember: data.groupMember || false,
           channelUrl: data.channelUrl || "https://t.me/LightningSatoshi",
-          groupUrl: data.groupUrl || "https://t.me/LightningSatCommunity",
           channelName: data.channelName || "Channel",
-          groupName: data.groupName || "Lightning Sat Community",
         });
         
-        if (!data.channelMember || !data.groupMember) {
+        if (!data.channelMember) {
           if (!isInitialCheck) {
-            setError("Please join all channels first!");
+            setError("Please join the channel first!");
           }
         }
       } else if (!isInitialCheck) {
@@ -91,18 +85,18 @@ export default function ChannelJoinPopup({ telegramId, onVerified }: ChannelJoin
     checkMembership(false);
   };
 
-  const allJoined = membershipStatus?.channelMember && membershipStatus?.groupMember;
+  const allJoined = membershipStatus?.channelMember;
 
   return (
     <div className="fixed inset-0 z-[9999] bg-black/90 backdrop-blur-md flex items-center justify-center p-5">
       <div className="w-full max-w-sm">
         {/* Header */}
         <div className="text-center mb-8">
-          <div className="w-16 h-16 mx-auto mb-4 rounded-2xl bg-[#F5C542]/10 border border-[#F5C542]/20 flex items-center justify-center">
-            <span className="text-[#F5C542] text-3xl font-black">₿</span>
+          <div className="w-20 h-20 mx-auto mb-4 rounded-2xl overflow-hidden">
+            <img src="/btc-icon.jpg" alt="Bitcoin" className="w-full h-full object-cover" />
           </div>
           <h1 className="text-white font-bold text-xl tracking-tight mb-1">Join to Continue</h1>
-          <p className="text-white/40 text-sm">Join our community to access the app</p>
+          <p className="text-white/40 text-sm">Join our channel to access the app</p>
         </div>
 
         {error && (
@@ -133,45 +127,10 @@ export default function ChannelJoinPopup({ telegramId, onVerified }: ChannelJoin
                 <p className={`font-semibold text-sm ${membershipStatus?.channelMember ? "text-white" : "text-white/80"}`}>
                   Join Channel
                 </p>
-                <p className="text-white/30 text-[10px] mt-0.5">Channel & Group</p>
+                <p className="text-white/30 text-[10px] mt-0.5">Required to access the app</p>
               </div>
             </div>
             {membershipStatus?.channelMember ? (
-              <div className="w-6 h-6 rounded-full bg-[#F5C542]/20 flex items-center justify-center">
-                <svg className="w-3.5 h-3.5 text-[#F5C542]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7" />
-                </svg>
-              </div>
-            ) : (
-              <span className="text-[#F5C542] text-[10px] font-black tracking-widest uppercase bg-[#F5C542]/10 px-2.5 py-1 rounded-lg">JOIN</span>
-            )}
-          </button>
-
-          {/* Group Join Button */}
-          <button
-            onClick={() => openLink(membershipStatus?.groupUrl || "https://t.me/LightningSatCommunity")}
-            className={`w-full flex items-center justify-between p-4 rounded-2xl border transition-all ${
-              membershipStatus?.groupMember
-                ? "bg-[#F5C542]/10 border-[#F5C542]/30"
-                : "bg-white/5 border-white/8 hover:border-white/20 active:scale-[0.98]"
-            }`}
-          >
-            <div className="flex items-center gap-3.5">
-              <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${
-                membershipStatus?.groupMember ? "bg-[#F5C542]/15" : "bg-white/8"
-              }`}>
-                <svg className={`w-5 h-5 ${membershipStatus?.groupMember ? "text-[#F5C542]" : "text-white/60"}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z" />
-                </svg>
-              </div>
-              <div className="text-left">
-                <p className={`font-semibold text-sm ${membershipStatus?.groupMember ? "text-white" : "text-white/80"}`}>
-                  Join Group
-                </p>
-                <p className="text-white/30 text-[10px] mt-0.5">Channel & Group</p>
-              </div>
-            </div>
-            {membershipStatus?.groupMember ? (
               <div className="w-6 h-6 rounded-full bg-[#F5C542]/20 flex items-center justify-center">
                 <svg className="w-3.5 h-3.5 text-[#F5C542]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7" />

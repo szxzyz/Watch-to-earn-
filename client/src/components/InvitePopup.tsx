@@ -93,10 +93,8 @@ export default function InvitePopup({ onClose }: InvitePopupProps) {
   };
 
   const membershipLabel = (r: ReferralItem) => {
-    if (r.channelMember && r.groupMember) return null;
-    if (!r.channelMember && !r.groupMember) return "Left channel & group";
-    if (!r.channelMember) return "Left channel";
-    return "Left group";
+    if (r.channelMember) return null;
+    return "Left channel";
   };
 
   return (
@@ -150,7 +148,7 @@ export default function InvitePopup({ onClose }: InvitePopupProps) {
                 <Users className="w-4 h-4 text-[#F5C542] flex-shrink-0 mt-0.5" />
                 <div>
                   <p className="text-white text-xs font-bold">Friend joins &amp; stays active</p>
-                  <p className="text-white/50 text-xs mt-0.5">They must join the channel and group to count.</p>
+                  <p className="text-white/50 text-xs mt-0.5">They must join the channel to count.</p>
                 </div>
               </div>
               <div className="flex items-start gap-3 bg-white/5 rounded-xl p-3">
