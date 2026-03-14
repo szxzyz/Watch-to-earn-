@@ -15,7 +15,8 @@ import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContai
 import { formatCurrency, format$ } from "@/lib/utils";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { Crown } from "lucide-react";
+import { Crown, ArrowLeft } from "lucide-react";
+import { useLocation } from "wouter";
 
 function formatLargeNumber(num: number): string {
   if (isNaN(num) || !isFinite(num)) {
@@ -78,6 +79,7 @@ export default function AdminPage() {
   const { toast } = useToast();
   const { isAdmin, isLoading: adminLoading } = useAdmin();
   const queryClient = useQueryClient();
+  const [, setLocation] = useLocation();
 
   // Fetch admin stats
   const { data: stats, isLoading: statsLoading } = useQuery<AdminStats>({
@@ -141,10 +143,20 @@ export default function AdminPage() {
       <main className="max-w-7xl mx-auto px-4 pb-20 pt-3">
         {/* Slim Header */}
         <div className="flex items-center justify-between mb-3">
-          <h1 className="text-xl font-bold text-foreground flex items-center gap-2">
-            <Crown className="w-5 h-5 text-orange-600" />
-            Admin Dashboard
-          </h1>
+          <div className="flex items-center gap-2">
+            <Button
+              size="sm"
+              variant="ghost"
+              onClick={() => setLocation("/")}
+              className="h-8 w-8 p-0 hover:bg-white/10"
+            >
+              <ArrowLeft className="w-4 h-4 text-white" />
+            </Button>
+            <h1 className="text-xl font-bold text-foreground flex items-center gap-2">
+              <Crown className="w-5 h-5 text-orange-600" />
+              Admin Dashboard
+            </h1>
+          </div>
           <Button 
             size="sm"
             variant="outline"

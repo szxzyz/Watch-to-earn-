@@ -202,7 +202,7 @@ export default function Home() {
   });
 
   const minMiningClaim = 1;
-  const canClaimMining = miningState && parseFloat(miningState.minedAmount) >= minMiningClaim;
+  const canClaimMining = miningState && parseFloat(miningState.currentMining || "0") >= minMiningClaim;
 
   // Render mining section (need to find where it is in the file)
 
@@ -1185,7 +1185,7 @@ export default function Home() {
             <div className="flex flex-col items-center flex-1">
               <span className="text-[#8E8E93] text-[9px] font-semibold uppercase tracking-wider mb-0.5">Mining Rate</span>
               <div className="flex items-center gap-1.5 leading-none">
-                <img src="/mining-icon.png" alt="mining" className="w-4 h-4 object-contain" style={{ filter: 'drop-shadow(0 0 3px rgba(255,165,0,0.9)) brightness(1.4)' }} />
+                <img src="/sat-icon.png" alt="SAT" className="w-4 h-4 rounded-full object-cover" />
                 <span className="text-white text-base font-black tabular-nums">
                   {miningRatePerHour.toFixed(4)}
                 </span>
@@ -1246,7 +1246,7 @@ export default function Home() {
                   <Button
                     onClick={handleClaimClick}
                     disabled={claimMiningMutation.isPending || !canClaimMining}
-                    className="w-full h-11 bg-white hover:bg-zinc-200 text-black rounded-xl font-black text-xs uppercase tracking-widest transition-all shadow-lg shadow-white/5 disabled:opacity-50"
+                    className="w-full h-11 bg-[#F5C542] hover:bg-yellow-400 text-black rounded-xl font-black text-xs uppercase tracking-widest transition-all shadow-lg shadow-yellow-500/20 disabled:opacity-50"
                   >
                     {claimMiningMutation.isPending ? (
                       <Loader2 className="w-4 h-4 animate-spin" />
@@ -1272,19 +1272,19 @@ export default function Home() {
               >
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-3">
-                    <Gift className="w-6 h-6 text-blue-400 flex-shrink-0" />
+                    <span className="text-2xl flex-shrink-0 leading-none">🤝</span>
                     <div>
                       <p className="text-white font-black text-sm leading-tight">
                         Invite Friends and Earn
                       </p>
-                      <p className="text-blue-400 font-bold text-xs mt-0.5">
-                        up to 100/h Sats
+                      <p className="text-[#F5C542] font-bold text-xs mt-0.5">
+                        +0.02 SAT/h per friend
                       </p>
                     </div>
                   </div>
-                  <div className="flex items-center gap-1.5 bg-blue-600 rounded-xl px-3 py-2 flex-shrink-0">
-                    <Send className="w-3.5 h-3.5 text-white" />
-                    <span className="text-white text-xs font-black uppercase tracking-wider">Invite</span>
+                  <div className="flex items-center gap-1.5 bg-[#F5C542] rounded-xl px-3 py-2 flex-shrink-0">
+                    <Send className="w-3.5 h-3.5 text-black" />
+                    <span className="text-black text-xs font-black uppercase tracking-wider">Invite</span>
                   </div>
                 </div>
               </div>
