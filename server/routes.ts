@@ -1051,12 +1051,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
       }
 
-      // 2. CHANNEL/GROUP JOIN CHECK
-      // MANDATORY: ALWAYS check membership in both channel and group
-      const [channelMember, groupMember] = await Promise.all([
-        verifyChannelMembership(userId, channelConfig.channelId, botToken),
-        verifyChannelMembership(userId, channelConfig.groupId, botToken),
-      ]);
+      // 2. CHANNEL JOIN CHECK
+      // Check membership in channel only
+      const channelMember = await verifyChannelMembership(userId, channelConfig.channelId, botToken);
+      const groupMember = true;
       
       const isVerified = channelMember && groupMember;
       
@@ -2137,22 +2135,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
         if (!referee) continue;
 
         let channelMember = false;
-        let groupMember = false;
+        const groupMember = true;
 
         // Check membership if bot token is available and referee has telegram_id
         if (botToken && referee.telegram_id) {
           try {
             const telegramNumericId = parseInt(referee.telegram_id, 10);
-            const [chanResult, groupResult] = await Promise.all([
-              verifyChannelMembership(telegramNumericId, channelConfig.channelId, botToken),
-              verifyChannelMembership(telegramNumericId, channelConfig.groupId, botToken),
-            ]);
-            channelMember = chanResult;
-            groupMember = groupResult;
+            channelMember = await verifyChannelMembership(telegramNumericId, channelConfig.channelId, botToken);
           } catch {}
         }
 
-        const isActive = ref.status === 'completed' && channelMember && groupMember;
+        const isActive = ref.status === 'completed' && channelMember;
         const totalSatsEarned = Math.round(parseFloat(ref.rewardAmount || '0'));
 
         result.push({
@@ -2204,40 +2197,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
         const telegramNumericId = parseInt(referee.telegram_id, 10);
         let channelMember = false;
-        let groupMember = false;
 
         try {
-          [channelMember, groupMember] = await Promise.all([
-            verifyChannelMembership(telegramNumericId, channelConfig.channelId, botToken),
-            verifyChannelMembership(telegramNumericId, channelConfig.groupId, botToken),
-          ]);
+          channelMember = await verifyChannelMembership(telegramNumericId, channelConfig.channelId, botToken);
         } catch {}
 
-        if (channelMember && groupMember) {
+        if (channelMember) {
           activeCount++;
-        } else if (referrer.telegram_id) {
-          // Friend left — notify the referrer
-          const refName = referee.firstName || referee.username || 'Your friend';
-          let what = '';
-          if (!channelMember && !groupMember) {
-            what = 'channel & group';
-          } else if (!channelMember) {
-            what = 'channel';
-          } else {
-            what = 'group';
-          }
-
-          let notifMsg = '';
-          if (what === 'channel & group') {
-            notifMsg = `⚠️ Your friend <b>${refName}</b> has left the channel & group. Your mining speed -0.02/h has been removed.`;
-          } else {
-            notifMsg = `⚠️ Your friend <b>${refName}</b> has left the ${what}. Your mining speed -0.02/h has been removed. Ask your friend to rejoin the ${what} so your mining speed continues.`;
-          }
-
-          try {
-            const { sendUserTelegramNotification } = await import('./telegram');
-            await sendUserTelegramNotification(referrer.telegram_id, notifMsg);
-          } catch {}
         }
       }
 
@@ -2259,7 +2225,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
             const { sendUserTelegramNotification } = await import('./telegram');
             await sendUserTelegramNotification(
               referrer.telegram_id,
-              `✅ Your mining speed has been restored! +${(parseFloat(newBoost) - previousBoost).toFixed(1)}/h added back because your friend rejoined the channel/group.`
+              `✅ Your mining speed has been restored! +${(parseFloat(newBoost) - previousBoost).toFixed(1)}/h added back because your friend rejoined the channel.`
             );
           } catch {}
         }

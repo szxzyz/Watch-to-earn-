@@ -706,10 +706,6 @@ export async function formatWelcomeMessage(): Promise<{ message: string; inlineK
         {
           text: "📢 Channel",
           url: channelUrl
-        },
-        {
-          text: "💬 Group",
-          url: groupUrl
         }
       ]
     ]
@@ -1406,7 +1402,7 @@ ${walletAddress}
 
           await storage.updateAdminSetting('channel_join_required', newValue.toString());
 
-          const statusText = newValue ? '🟢 Channel Join: ON\n\nUsers must join Channel & Group to access the app.' : '🔴 Channel Join: OFF\n\nUsers can access the app directly without joining.';
+          const statusText = newValue ? '🟢 Channel Join: ON\n\nUsers must join Channel to access the app.' : '🔴 Channel Join: OFF\n\nUsers can access the app directly without joining.';
 
           await fetch(`https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/answerCallbackQuery`, {
             method: 'POST',
