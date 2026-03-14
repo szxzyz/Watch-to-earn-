@@ -31,29 +31,23 @@ app.use(express.urlencoded({ extended: false }));
 app.use(countryBlockingMiddleware);
 
 // Add webhook route BEFORE any other middleware to ensure it works
-app.post('/api/telegram/webhook', async (req: any, res) => {
-  try {
-    console.log('📨 Direct webhook called!', JSON.stringify(req.body, null, 2));
-    
-    const { handleTelegramMessage, handleTelegramCallback } = await import('./telegram');
-    const handled = await handleTelegramMessage(req.body);
-    
-    // Handle callback queries
-    if (req.body.callback_query) {
-      try {
+app.post('/api/telegram/webhook', (req: any, res) => {
+  // Respond to Telegram immediately (< 100ms) to prevent retries and ensure instant bot response
+  res.status(200).json({ ok: true });
+
+  // Process message asynchronously in background - never blocks Telegram's timeout
+  (async () => {
+    try {
+      const { handleTelegramMessage, handleTelegramCallback } = await import('./telegram');
+      await handleTelegramMessage(req.body);
+
+      if (req.body.callback_query) {
         await handleTelegramCallback(req.body.callback_query);
-      } catch (err) {
-        console.error('Error in callback handler:', err);
       }
+    } catch (error) {
+      console.error('❌ Webhook processing error:', error);
     }
-    
-    console.log('✅ Message handled:', handled);
-    
-    res.status(200).json({ ok: true, handled });
-  } catch (error) {
-    console.error('❌ Direct webhook error:', error);
-    res.status(500).json({ error: 'Internal server error' });
-  }
+  })();
 });
 
 // Emergency referral fix endpoint - SECURED for production

@@ -1145,7 +1145,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (parseFloat(miningState.currentMining) < minClaimAmount) {
         return res.status(400).json({ 
           success: false, 
-          message: `Minimum claim amount is ${minClaimAmount} AXN` 
+          message: `Minimum claim amount is ${minClaimAmount} SAT. Keep mining to reach the threshold.` 
         });
       }
 

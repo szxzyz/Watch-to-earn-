@@ -531,7 +531,11 @@ export class DatabaseStorage implements IStorage {
     // Referral boost stored as per-hour value
     const referralBoostHourly = parseFloat(user.referralMiningBoost || "0");
     const referralBoostPerSec = referralBoostHourly / 3600;
-    let totalRate = baseRate + referralBoostPerSec;
+    // Ad section boosts (per-hour values stored on user record)
+    const adSection1BoostHourly = parseFloat((user as any).adSection1Boost || "0");
+    const adSection2BoostHourly = parseFloat((user as any).adSection2Boost || "0");
+    const adBoostPerSec = (adSection1BoostHourly + adSection2BoostHourly) / 3600;
+    let totalRate = baseRate + referralBoostPerSec + adBoostPerSec;
     boosts.forEach(boost => {
       totalRate += parseFloat(boost.miningRate);
     });
