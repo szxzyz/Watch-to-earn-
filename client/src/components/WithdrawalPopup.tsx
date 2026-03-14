@@ -84,7 +84,7 @@ export default function WithdrawalPopup({ open, onOpenChange, tonBalance }: With
       return;
     }
     if (!withdrawAddress.trim().endsWith("@speed.app")) {
-      showNotification("Address must end with @speed.app (e.g. username@speed.app)", "error");
+      showNotification("Address must end with @speed.app", "error");
       return;
     }
     withdrawMutation.mutate();
