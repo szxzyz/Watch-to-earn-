@@ -127,7 +127,7 @@ export default function MenuPopup({ onClose }: MenuPopupProps) {
                 className="w-full flex items-center justify-between bg-white/5 rounded-2xl p-4 hover:bg-white/10 transition-all active:scale-[0.99]"
               >
                 <div className="flex items-center gap-3">
-                  <Receipt className="w-5 h-5 text-blue-400" />
+                  <Receipt className="w-5 h-5 text-green-400" />
                   <span className="text-white font-bold text-sm">Transactions</span>
                 </div>
                 <ChevronRight className="w-4 h-4 text-white/30" />
@@ -139,7 +139,7 @@ export default function MenuPopup({ onClose }: MenuPopupProps) {
                 className="w-full flex items-center justify-between bg-white/5 rounded-2xl p-4 hover:bg-white/10 transition-all active:scale-[0.99]"
               >
                 <div className="flex items-center gap-3">
-                  <Shield className="w-5 h-5 text-blue-400" />
+                  <Shield className="w-5 h-5 text-purple-400" />
                   <span className="text-white font-bold text-sm">Legal Info</span>
                 </div>
                 <ChevronRight className="w-4 h-4 text-white/30" />

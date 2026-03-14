@@ -102,9 +102,10 @@ export default function AppNotification() {
 
   const notificationElement = (
     <div 
-      className="fixed top-4 left-1/2 -translate-x-1/2 z-[99999] px-4 py-3 rounded-xl shadow-2xl text-white font-medium text-sm flex items-center gap-2 animate-slideDown max-w-[90vw]"
+      className="fixed top-4 left-1/2 -translate-x-1/2 z-[99999] px-4 py-3 rounded-xl shadow-2xl font-medium text-sm flex items-center gap-2 animate-slideDown max-w-[90vw]"
       style={{
-        backgroundColor: '#1534A1',
+        backgroundColor: type === 'error' ? '#ef4444' : type === 'info' ? '#3b82f6' : '#F5C542',
+        color: type === 'error' || type === 'info' ? '#ffffff' : '#000000',
         animation: isVisible ? "slideDown 0.3s ease-out" : "slideUp 0.3s ease-out",
         pointerEvents: 'auto'
       }}

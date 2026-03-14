@@ -127,8 +127,8 @@ export function SatPriceChart() {
       {/* Header */}
       <div className="flex items-center justify-between px-4 pt-3 pb-2">
         <div className="flex items-center gap-2">
-          <div className="w-7 h-7 rounded-full bg-[#F5C542]/15 flex items-center justify-center">
-            <span className="text-[#F5C542] text-sm font-black">₿</span>
+          <div className="w-7 h-7 rounded-full overflow-hidden flex items-center justify-center">
+            <img src="/btc-icon.jpg" alt="Bitcoin" className="w-full h-full object-cover" />
           </div>
           <div>
             <p className="text-white text-xs font-black leading-none">Bitcoin · SAT</p>

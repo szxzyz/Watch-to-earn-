@@ -130,7 +130,7 @@ export default function InvitePopup({ onClose }: InvitePopupProps) {
           {/* Header */}
           <div className="flex items-center px-5 py-3 border-b border-white/5">
             <div className="flex items-center gap-2">
-              <UserPlus className="w-5 h-5 text-blue-400" />
+              <UserPlus className="w-5 h-5 text-[#F5C542]" />
               <h2 className="text-white font-bold text-base">Invite Friends</h2>
             </div>
           </div>
@@ -140,21 +140,21 @@ export default function InvitePopup({ onClose }: InvitePopupProps) {
             <div className="space-y-2">
               <p className="text-white/40 text-[10px] font-black uppercase tracking-widest">How It Works</p>
               <div className="flex items-start gap-3 bg-white/5 rounded-xl p-3">
-                <Link2 className="w-4 h-4 text-blue-400 flex-shrink-0 mt-0.5" />
+                <Link2 className="w-4 h-4 text-[#F5C542] flex-shrink-0 mt-0.5" />
                 <div>
                   <p className="text-white text-xs font-bold">Share your link</p>
                   <p className="text-white/50 text-xs mt-0.5">Send your unique invite link to friends.</p>
                 </div>
               </div>
               <div className="flex items-start gap-3 bg-white/5 rounded-xl p-3">
-                <Users className="w-4 h-4 text-blue-400 flex-shrink-0 mt-0.5" />
+                <Users className="w-4 h-4 text-[#F5C542] flex-shrink-0 mt-0.5" />
                 <div>
                   <p className="text-white text-xs font-bold">Friend joins &amp; stays active</p>
                   <p className="text-white/50 text-xs mt-0.5">They must join the channel and group to count.</p>
                 </div>
               </div>
               <div className="flex items-start gap-3 bg-white/5 rounded-xl p-3">
-                <Zap className="w-4 h-4 text-blue-400 flex-shrink-0 mt-0.5" />
+                <Zap className="w-4 h-4 text-[#F5C542] flex-shrink-0 mt-0.5" />
                 <div>
                   <p className="text-white text-xs font-bold">You earn +0.02 SAT/h per friend</p>
                   <p className="text-white/50 text-xs mt-0.5">More friends = faster mining, up to 100/h Sats.</p>
@@ -199,7 +199,7 @@ export default function InvitePopup({ onClose }: InvitePopupProps) {
                 <Button
                   onClick={shareLink}
                   disabled={!referralLink || isSharing}
-                  className="h-10 bg-blue-600 hover:bg-blue-500 text-white border-0 text-xs font-semibold"
+                  className="h-10 bg-[#F5C542] hover:bg-yellow-400 text-black border-0 text-xs font-semibold"
                 >
                   {isSharing ? (
                     <Loader2 className="w-3.5 h-3.5 mr-1.5 animate-spin" />
