@@ -48,7 +48,7 @@ export default function ChannelJoinPopup({ telegramId, onVerified }: ChannelJoin
         setMembershipStatus({
           channelMember: data.channelMember || false,
           groupMember: data.groupMember || false,
-          channelUrl: data.channelUrl || "https://t.me/MoneyAdz",
+          channelUrl: data.channelUrl || "https://t.me/LightningSatoshi",
           groupUrl: data.groupUrl || "https://t.me/LightningSatCommunity",
           channelName: data.channelName || "Channel",
           groupName: data.groupName || "Lightning Sat Community",
@@ -114,7 +114,7 @@ export default function ChannelJoinPopup({ telegramId, onVerified }: ChannelJoin
         <div className="space-y-2.5 mb-6">
           {/* Channel Join Button */}
           <button
-            onClick={() => openLink(membershipStatus?.channelUrl || "https://t.me/MoneyAdz")}
+            onClick={() => openLink(membershipStatus?.channelUrl || "https://t.me/LightningSatoshi")}
             className={`w-full flex items-center justify-between p-4 rounded-2xl border transition-all ${
               membershipStatus?.channelMember
                 ? "bg-[#F5C542]/10 border-[#F5C542]/30"
