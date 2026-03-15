@@ -397,24 +397,32 @@ export async function registerRoutes(app: Express): Promise<Server> {
         settingsMap[s.settingKey] = s.settingValue;
       });
 
+      // minimum_withdrawal_ton / withdrawal_fee_ton are the canonical DB keys
+      // (admin panel saves under these keys). Expose them under both names so
+      // any frontend that references either key gets the right value.
+      const minWithdraw = settingsMap['minimum_withdrawal_ton'] || settingsMap['minimum_withdrawal_sat'] || '20';
+      const withdrawFee  = settingsMap['withdrawal_fee_ton']    || settingsMap['withdrawal_fee_sat']    || '0';
+
       res.json({
-        minimum_withdrawal_sat: settingsMap['minimum_withdrawal_sat'] || '20',
-        withdrawal_fee_sat: settingsMap['withdrawal_fee_sat'] || '10',
-        minimum_withdrawal_ton: settingsMap['minimum_withdrawal_ton'] || '100',
-        withdrawal_fee_ton: settingsMap['withdrawal_fee_ton'] || '0',
+        minimum_withdrawal_sat: minWithdraw,
+        withdrawal_fee_sat: withdrawFee,
+        minimum_withdrawal_ton: minWithdraw,
+        withdrawal_fee_ton: withdrawFee,
         ad_section1_limit: settingsMap['ad_section1_limit'] || '250',
         ad_section2_limit: settingsMap['ad_section2_limit'] || '250',
         ad_section1_reward: settingsMap['ad_section1_reward'] || '0.0015',
         ad_section2_reward: settingsMap['ad_section2_reward'] || '0.0001',
+        referralBoostPerInvite: parseFloat(settingsMap['referral_boost_per_invite'] || '0.02'),
       });
     } catch (error) {
       res.json({ 
         minimum_withdrawal_sat: '20',
-        withdrawal_fee_sat: '10',
-        minimum_withdrawal_ton: '100', 
+        withdrawal_fee_sat: '0',
+        minimum_withdrawal_ton: '20',
         withdrawal_fee_ton: '0',
         ad_section1_limit: '250',
-        ad_section2_limit: '250'
+        ad_section2_limit: '250',
+        referralBoostPerInvite: 0.02,
       });
     }
   });
@@ -955,6 +963,27 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // If channel join requirement is disabled, let everyone in
       if (!channelJoinRequired) {
         console.log('🔧 Channel join requirement is OFF - granting access');
+
+        // REFERRAL FIX: Even when channel join is OFF, activate pending referrals
+        // because the user is effectively "verified" without needing to join.
+        // This handles the case where referrals were created as 'pending' while
+        // the requirement was OFF and need to be resolved.
+        try {
+          const telegramData = req.headers['x-telegram-data'] || req.query.tgData;
+          if (telegramData && process.env.TELEGRAM_BOT_TOKEN) {
+            const { verifyTelegramWebAppData } = await import('./auth');
+            const { isValid, user: tgUser } = verifyTelegramWebAppData(telegramData, process.env.TELEGRAM_BOT_TOKEN);
+            if (isValid && tgUser?.id) {
+              const dbUser = await storage.getUserByTelegramId(tgUser.id.toString());
+              if (dbUser) {
+                await storage.checkAndActivateReferralOnChannelJoin(dbUser.id);
+              }
+            }
+          }
+        } catch (activationError) {
+          console.error('⚠️ Could not activate pending referrals (channel OFF path):', activationError);
+        }
+
         return res.json({
           success: true,
           isVerified: true,
@@ -1664,6 +1693,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         activePromoCode,
         // Withdrawal packages (JSON array of {ton, bug} objects)
         withdrawalPackages: JSON.parse(getSetting('withdrawal_packages', '[{"ton":0.2,"bug":2000},{"ton":0.4,"bug":4000},{"ton":0.8,"bug":8000}]')),
+        referralBoostPerInvite: parseFloat(getSetting('referral_boost_per_invite', '0.02')),
       });
     } catch (error) {
       console.error("Error fetching app settings:", error);
@@ -2161,7 +2191,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           channelMember,
           groupMember,
           isActive,
-          miningBoost: isActive ? 0.02 : 0,
+          miningBoost: isActive ? parseFloat(getSetting('referral_boost_per_invite', '0.02')) : 0,
         });
       }
 
@@ -2211,8 +2241,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
       }
 
-      // 0.02/h per active referral in terms of rate-per-hour
-      const newBoostPerHour = activeCount * 0.02;
+      // referral_boost_per_invite per active referral
+      const boostPerInvite = parseFloat(getSetting('referral_boost_per_invite', '0.02'));
+      const newBoostPerHour = activeCount * boostPerInvite;
       // Store as per-hour value (the UI shows /h directly)
       const newBoost = newBoostPerHour.toFixed(8);
 
@@ -3458,6 +3489,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         miningToday: stats.miningToday,
         usersWithReferrals: stats.usersWithReferrals,
         totalSatsWithdrawn: stats.totalSatsWithdrawn,
+        todaySatsWithdrawn: stats.todaySatsWithdrawn,
         activePromos: 0
       });
     } catch (error) {
@@ -3595,6 +3627,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         ad_section2_reward: getSetting('ad_section2_reward', '0.0001'),
         ad_section2_limit: getSetting('ad_section2_limit', '250'),
         withdrawalPackages: JSON.parse(getSetting('withdrawal_packages', '[{"usd":0.2,"bug":2000},{"usd":0.4,"bug":4000},{"usd":0.8,"bug":8000}]')),
+        channelJoinRequired: getSetting('channel_join_required', 'true') !== 'false',
       });
     } catch (error) {
       console.error("Error fetching admin settings:", error);
@@ -3661,7 +3694,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
         ad_section1_reward: 'ad_section1_reward',
         ad_section1_limit: 'ad_section1_limit',
         ad_section2_reward: 'ad_section2_reward',
-        ad_section2_limit: 'ad_section2_limit'
+        ad_section2_limit: 'ad_section2_limit',
+        channelJoinRequired: 'channel_join_required',
+        minimum_withdrawal_sat: 'minimum_withdrawal_ton',
+        withdrawal_fee_sat: 'withdrawal_fee_ton',
       };
 
       for (const [feKey, dbKey] of Object.entries(settingMap)) {
@@ -3672,6 +3708,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       if (settings.withdrawalPackages !== undefined) {
         await updateSetting('withdrawal_packages', JSON.stringify(settings.withdrawalPackages));
+      }
+
+      // REFERRAL FIX: When channel_join_required is turned OFF, batch-activate all pending referrals
+      // so users who were invited while the requirement was OFF don't stay stuck in 'pending'
+      if (settings.channelJoinRequired === false || settings.channel_join_required === 'false') {
+        console.log('🔄 channel_join_required turned OFF - batch-activating all pending referrals...');
+        setImmediate(async () => {
+          try {
+            const result = await storage.activateAllPendingReferrals();
+            console.log(`✅ Batch referral activation complete: ${result.activated} referrals activated`);
+          } catch (batchError) {
+            console.error('⚠️ Batch referral activation failed:', batchError);
+          }
+        });
       }
       
       broadcastUpdate({
@@ -3744,7 +3794,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
         ad_section1_reward: 'ad_section1_reward',
         ad_section1_limit: 'ad_section1_limit',
         ad_section2_reward: 'ad_section2_reward',
-        ad_section2_limit: 'ad_section2_limit'
+        ad_section2_limit: 'ad_section2_limit',
+        channelJoinRequired: 'channel_join_required',
+        minimum_withdrawal_sat: 'minimum_withdrawal_ton',
+        withdrawal_fee_sat: 'withdrawal_fee_ton',
       };
 
       for (const [feKey, dbKey] of Object.entries(settingMap)) {
@@ -3755,6 +3808,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       if (settings.withdrawalPackages !== undefined) {
         await updateSetting('withdrawal_packages', JSON.stringify(settings.withdrawalPackages));
+      }
+
+      // REFERRAL FIX: When channel_join_required is turned OFF, batch-activate all pending referrals
+      if (settings.channelJoinRequired === false || settings.channel_join_required === 'false') {
+        console.log('🔄 channel_join_required turned OFF (POST) - batch-activating all pending referrals...');
+        setImmediate(async () => {
+          try {
+            const result = await storage.activateAllPendingReferrals();
+            console.log(`✅ Batch referral activation complete: ${result.activated} referrals activated`);
+          } catch (batchError) {
+            console.error('⚠️ Batch referral activation failed:', batchError);
+          }
+        });
       }
       
       broadcastUpdate({
@@ -3877,17 +3943,39 @@ export async function registerRoutes(app: Express): Promise<Server> {
           FROM ${users} u
           WHERE u.created_at >= CURRENT_DATE - INTERVAL '6 days'
           GROUP BY DATE(u.created_at)
+        ),
+        daily_ads AS (
+          SELECT
+            DATE(e.created_at) as date,
+            COUNT(*) as ads_watched
+          FROM ${earnings} e
+          WHERE e.created_at >= CURRENT_DATE - INTERVAL '6 days'
+            AND e.source = 'ad_watch'
+          GROUP BY DATE(e.created_at)
+        ),
+        daily_referrals AS (
+          SELECT
+            DATE(r.created_at) as date,
+            COUNT(*) as referrals
+          FROM ${referrals} r
+          WHERE r.created_at >= CURRENT_DATE - INTERVAL '6 days'
+            AND r.status = 'completed'
+          GROUP BY DATE(r.created_at)
         )
         SELECT 
           ds.date,
           COALESCE(s.active_users, 0) as active_users,
           COALESCE(s.earnings, 0) as earnings,
           COALESCE(w.withdrawals, 0) as withdrawals,
-          COALESCE(u.new_users, 0) as new_users
+          COALESCE(u.new_users, 0) as new_users,
+          COALESCE(a.ads_watched, 0) as ads_watched,
+          COALESCE(rf.referrals, 0) as referrals
         FROM date_series ds
         LEFT JOIN daily_stats s ON ds.date = s.date
         LEFT JOIN daily_withdrawals w ON ds.date = w.date
         LEFT JOIN daily_user_count u ON ds.date = u.date
+        LEFT JOIN daily_ads a ON ds.date = a.date
+        LEFT JOIN daily_referrals rf ON ds.date = rf.date
         ORDER BY ds.date ASC
       `);
 
@@ -3903,10 +3991,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
         cumulativeUsers += Number(row.new_users || 0);
         return {
           period: new Date(row.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
-          users: Number(cumulativeUsers), // Ensure it's a number in the output
+          users: Number(cumulativeUsers),
           earnings: parseFloat(row.earnings || '0'),
           withdrawals: parseFloat(row.withdrawals || '0'),
-          activeUsers: Number(row.active_users || 0)
+          activeUsers: Number(row.active_users || 0),
+          adsWatched: Number(row.ads_watched || 0),
+          referrals: Number(row.referrals || 0)
         };
       });
 
