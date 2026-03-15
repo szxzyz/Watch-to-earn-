@@ -42,10 +42,13 @@ interface AdminStats {
   totalAdsWatched: number;
   todayAdsWatched: number;
   totalSatsWithdrawn: string;
+  todaySatsWithdrawn?: string;
   usersWithReferrals: number;
   pendingWithdrawals: number;
   successfulWithdrawals: number;
   rejectedWithdrawals: number;
+  approvedWithdrawals?: number;
+  rejectedWithdrawals2?: number;
   totalEarnings: string;
   totalWithdrawals: string;
 }
@@ -205,35 +208,35 @@ export default function AdminPage() {
 
 function SummarySection({ stats, isLoading }: { stats: AdminStats | undefined; isLoading: boolean }) {
   const statCards = [
-    { icon: UserCheck, label: "Active Users", value: fmt(stats?.dailyActiveUsers ?? 0), sub: `of ${fmt(stats?.totalUsers ?? 0)} total`, color: "bg-blue-600" },
+    { icon: UserCheck, label: "Active Users Today", value: fmt(stats?.dailyActiveUsers ?? 0), sub: `of ${fmt(stats?.totalUsers ?? 0)} total`, color: "bg-blue-600" },
     { icon: Pickaxe, label: "Total Mining Sats", value: fmtSat(stats?.totalMiningSats ?? "0"), sub: "all time mined", color: "bg-orange-600" },
-    { icon: TrendingUp, label: "Mining Today", value: fmtSat(stats?.miningToday ?? "0"), sub: "today", color: "bg-green-600" },
+    { icon: TrendingUp, label: "Mining Today", value: fmtSat(stats?.miningToday ?? "0"), sub: "today all sources", color: "bg-green-600" },
     { icon: Eye, label: "Total Ads Watched", value: fmt(stats?.totalAdsWatched ?? 0), sub: "all time", color: "bg-purple-600" },
     { icon: Eye, label: "Ads Watched Today", value: fmt(stats?.todayAdsWatched ?? 0), sub: "today", color: "bg-indigo-600" },
-    { icon: LogOut, label: "Total Sats Withdrawn", value: fmtSat(stats?.totalSatsWithdrawn ?? "0"), sub: `${fmt(stats?.successfulWithdrawals ?? 0)} payouts done`, color: "bg-red-600" },
+    { icon: LogOut, label: "Total Sats Withdrawn", value: fmtSat(stats?.totalSatsWithdrawn ?? "0"), sub: `${fmt((stats as any)?.approvedWithdrawals ?? stats?.successfulWithdrawals ?? 0)} payouts done`, color: "bg-red-600" },
+    { icon: DollarSign, label: "Withdrawn Today", value: fmtSat(stats?.todaySatsWithdrawn ?? "0"), sub: "approved today", color: "bg-rose-700" },
     { icon: GitBranch, label: "Users With Referrals", value: fmt(stats?.usersWithReferrals ?? 0), sub: "have invited friends", color: "bg-teal-600" },
   ];
+
+  const { data: chartRes } = useQuery({
+    queryKey: ["/api/admin/analytics/chart"],
+    queryFn: () => apiRequest("GET", "/api/admin/analytics/chart").then(r => r.json()),
+    refetchInterval: 60000,
+  });
+
+  const chartData: any[] = chartRes?.data || [];
 
   if (isLoading) {
     return (
       <div className="space-y-4">
         <div className="grid grid-cols-2 gap-3">
-          {[...Array(6)].map((_, i) => (
+          {[...Array(8)].map((_, i) => (
             <div key={i} className="bg-[#0f0f0f] h-24 rounded-2xl animate-pulse" />
           ))}
         </div>
       </div>
     );
   }
-
-  const trendData = Array.from({ length: 7 }, (_, i) => ({
-    day: ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"][i],
-    mining: Math.round(parseFloat(stats?.miningToday ?? "0") * (0.4 + Math.random() * 0.8)),
-    ads: Math.round((stats?.todayAdsWatched ?? 0) * (0.4 + Math.random() * 0.8)),
-    users: Math.round((stats?.dailyActiveUsers ?? 0) * (0.4 + Math.random() * 0.8)),
-    withdrawals: Math.round(parseFloat(stats?.totalSatsWithdrawn ?? "0") * 0.03 * Math.random()),
-    referrals: Math.round((stats?.usersWithReferrals ?? 0) * 0.08 * Math.random()),
-  }));
 
   return (
     <div className="space-y-5">
@@ -247,49 +250,49 @@ function SummarySection({ stats, isLoading }: { stats: AdminStats | undefined; i
       {/* Charts */}
       <div className="space-y-4">
         <ChartCard title="⛏ Mining Activity (SAT)" color="#f97316">
-          <AreaChart data={trendData}>
+          <AreaChart data={chartData}>
             <CartesianGrid strokeDasharray="3 3" stroke="#1a1a1a" />
-            <XAxis dataKey="day" tick={{ fontSize: 10, fill: "#666" }} />
+            <XAxis dataKey="period" tick={{ fontSize: 10, fill: "#666" }} />
             <YAxis tick={{ fontSize: 10, fill: "#666" }} tickFormatter={v => fmt(v)} />
             <Tooltip contentStyle={{ background: "#111", border: "1px solid #222", borderRadius: 8, fontSize: 11 }} formatter={(v: any) => [fmtSat(v), "Mining"]} />
-            <Area type="monotone" dataKey="mining" stroke="#f97316" fill="#f9731620" strokeWidth={2} />
+            <Area type="monotone" dataKey="earnings" stroke="#f97316" fill="#f9731620" strokeWidth={2} />
           </AreaChart>
         </ChartCard>
 
         <ChartCard title="👁 Daily Ads Watched" color="#8b5cf6">
-          <BarChart data={trendData}>
+          <BarChart data={chartData}>
             <CartesianGrid strokeDasharray="3 3" stroke="#1a1a1a" />
-            <XAxis dataKey="day" tick={{ fontSize: 10, fill: "#666" }} />
+            <XAxis dataKey="period" tick={{ fontSize: 10, fill: "#666" }} />
             <YAxis tick={{ fontSize: 10, fill: "#666" }} tickFormatter={v => fmt(v)} />
             <Tooltip contentStyle={{ background: "#111", border: "1px solid #222", borderRadius: 8, fontSize: 11 }} formatter={(v: any) => [fmt(v), "Ads"]} />
-            <Bar dataKey="ads" fill="#8b5cf6" radius={[4, 4, 0, 0]} />
+            <Bar dataKey="adsWatched" fill="#8b5cf6" radius={[4, 4, 0, 0]} />
           </BarChart>
         </ChartCard>
 
-        <ChartCard title="👥 Daily User Activity" color="#3b82f6">
-          <LineChart data={trendData}>
+        <ChartCard title="👥 Daily Active Users" color="#3b82f6">
+          <LineChart data={chartData}>
             <CartesianGrid strokeDasharray="3 3" stroke="#1a1a1a" />
-            <XAxis dataKey="day" tick={{ fontSize: 10, fill: "#666" }} />
+            <XAxis dataKey="period" tick={{ fontSize: 10, fill: "#666" }} />
             <YAxis tick={{ fontSize: 10, fill: "#666" }} tickFormatter={v => fmt(v)} />
-            <Tooltip contentStyle={{ background: "#111", border: "1px solid #222", borderRadius: 8, fontSize: 11 }} formatter={(v: any) => [fmt(v), "Users"]} />
-            <Line type="monotone" dataKey="users" stroke="#3b82f6" strokeWidth={2} dot={{ fill: "#3b82f6", r: 3 }} />
+            <Tooltip contentStyle={{ background: "#111", border: "1px solid #222", borderRadius: 8, fontSize: 11 }} formatter={(v: any) => [fmt(v), "Active Users"]} />
+            <Line type="monotone" dataKey="activeUsers" stroke="#3b82f6" strokeWidth={2} dot={{ fill: "#3b82f6", r: 3 }} />
           </LineChart>
         </ChartCard>
 
-        <ChartCard title="💸 Withdraw Statistics (SAT)" color="#ef4444">
-          <BarChart data={trendData}>
+        <ChartCard title="💸 Daily Withdrawals (SAT)" color="#ef4444">
+          <BarChart data={chartData}>
             <CartesianGrid strokeDasharray="3 3" stroke="#1a1a1a" />
-            <XAxis dataKey="day" tick={{ fontSize: 10, fill: "#666" }} />
+            <XAxis dataKey="period" tick={{ fontSize: 10, fill: "#666" }} />
             <YAxis tick={{ fontSize: 10, fill: "#666" }} tickFormatter={v => fmtSat(v)} />
             <Tooltip contentStyle={{ background: "#111", border: "1px solid #222", borderRadius: 8, fontSize: 11 }} formatter={(v: any) => [fmtSat(v), "Withdrawn"]} />
             <Bar dataKey="withdrawals" fill="#ef4444" radius={[4, 4, 0, 0]} />
           </BarChart>
         </ChartCard>
 
-        <ChartCard title="🔗 Referral Growth" color="#14b8a6">
-          <AreaChart data={trendData}>
+        <ChartCard title="🔗 Daily Referrals" color="#14b8a6">
+          <AreaChart data={chartData}>
             <CartesianGrid strokeDasharray="3 3" stroke="#1a1a1a" />
-            <XAxis dataKey="day" tick={{ fontSize: 10, fill: "#666" }} />
+            <XAxis dataKey="period" tick={{ fontSize: 10, fill: "#666" }} />
             <YAxis tick={{ fontSize: 10, fill: "#666" }} tickFormatter={v => fmt(v)} />
             <Tooltip contentStyle={{ background: "#111", border: "1px solid #222", borderRadius: 8, fontSize: 11 }} formatter={(v: any) => [fmt(v), "Referrals"]} />
             <Area type="monotone" dataKey="referrals" stroke="#14b8a6" fill="#14b8a620" strokeWidth={2} />
@@ -1221,6 +1224,107 @@ function SettingsSection() {
       >
         {saving ? "Saving..." : "Save Settings"}
       </Button>
+    </div>
+  );
+}
+
+/* ─── COUNTRIES ───────────────────────────────────────────────────────────── */
+
+function CountrySection() {
+  const { toast } = useToast();
+  const queryClient = useQueryClient();
+  const [search, setSearch] = useState("");
+  const [updating, setUpdating] = useState<Set<string>>(new Set());
+
+  const { data: countriesData, isLoading } = useQuery<{ success: boolean; countries: { code: string; name: string }[] }>({
+    queryKey: ["/api/countries"],
+    queryFn: () => fetch("/api/countries").then(r => r.json()),
+  });
+
+  const { data: blockedData } = useQuery<{ success: boolean; blockedCountries: string[] }>({
+    queryKey: ["/api/admin/blocked-countries"],
+    queryFn: () => apiRequest("GET", "/api/admin/blocked-countries").then(r => r.json()),
+    refetchInterval: 30000,
+  });
+
+  const countries: { code: string; name: string }[] = countriesData?.countries || [];
+  const blockedSet = new Set<string>(blockedData?.blockedCountries || []);
+
+  const filtered = countries.filter(c =>
+    !search || c.name.toLowerCase().includes(search.toLowerCase()) || c.code.toLowerCase().includes(search.toLowerCase())
+  );
+
+  const toggleCountry = async (code: string, blocked: boolean) => {
+    setUpdating(prev => new Set(prev).add(code));
+    try {
+      const endpoint = blocked ? "/api/admin/unblock-country" : "/api/admin/block-country";
+      const r = await apiRequest("POST", endpoint, { countryCode: code });
+      const d = await r.json();
+      if (d.success) {
+        queryClient.invalidateQueries({ queryKey: ["/api/admin/blocked-countries"] });
+        toast({ title: blocked ? `Unblocked ${code}` : `Blocked ${code}` });
+      } else {
+        toast({ title: d.message || "Failed", variant: "destructive" });
+      }
+    } catch {
+      toast({ title: "Error", variant: "destructive" });
+    } finally {
+      setUpdating(prev => { const s = new Set(prev); s.delete(code); return s; });
+    }
+  };
+
+  if (isLoading) {
+    return <div className="space-y-2">{[...Array(6)].map((_, i) => <div key={i} className="bg-[#0f0f0f] h-12 rounded-xl animate-pulse" />)}</div>;
+  }
+
+  return (
+    <div className="space-y-3">
+      <div className="flex items-center justify-between">
+        <p className="text-xs text-gray-400">{blockedSet.size} countries blocked</p>
+      </div>
+      <div className="relative">
+        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-gray-500" />
+        <Input
+          className="pl-8 h-8 text-xs bg-[#0f0f0f] border-white/10"
+          placeholder="Search country..."
+          value={search}
+          onChange={e => setSearch(e.target.value)}
+        />
+      </div>
+      <div className="space-y-1.5 max-h-[60vh] overflow-y-auto pr-1">
+        {filtered.map(c => {
+          const isBlocked = blockedSet.has(c.code);
+          const isUpdating = updating.has(c.code);
+          return (
+            <div
+              key={c.code}
+              className={`flex items-center justify-between px-3 py-2 rounded-xl border transition-all ${
+                isBlocked ? "bg-red-900/10 border-red-600/20" : "bg-[#0f0f0f] border-white/8"
+              }`}
+            >
+              <div className="flex items-center gap-2">
+                <span className="text-base">{c.code === "US" ? "🇺🇸" : c.code === "RU" ? "🇷🇺" : c.code === "CN" ? "🇨🇳" : "🌐"}</span>
+                <div>
+                  <p className="text-xs font-medium text-white">{c.name}</p>
+                  <p className="text-[10px] text-gray-500">{c.code}</p>
+                </div>
+              </div>
+              <Button
+                size="sm"
+                disabled={isUpdating}
+                onClick={() => toggleCountry(c.code, isBlocked)}
+                className={`h-7 text-[10px] px-2.5 ${
+                  isBlocked
+                    ? "bg-green-800 hover:bg-green-700 text-white"
+                    : "bg-red-800 hover:bg-red-700 text-white"
+                }`}
+              >
+                {isUpdating ? "..." : isBlocked ? "Unblock" : "Block"}
+              </Button>
+            </div>
+          );
+        })}
+      </div>
     </div>
   );
 }
