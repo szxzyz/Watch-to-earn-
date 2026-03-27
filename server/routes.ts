@@ -925,6 +925,52 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Project Statistics endpoint
+  app.get('/api/project/stats', async (req: any, res) => {
+    try {
+      const [totalUsersResult, totalWithdrawalsResult, oldestUserResult] = await Promise.all([
+        db.select({ count: sql<number>`count(*)` }).from(users),
+        db.select({ total: sql<string>`COALESCE(SUM(amount::numeric), 0)` })
+          .from(withdrawals)
+          .where(sql`status IN ('completed', 'approved', 'paid')`),
+        db.select({ createdAt: users.createdAt }).from(users).orderBy(users.createdAt).limit(1),
+      ]);
+
+      const totalUsers = Number(totalUsersResult[0]?.count || 0);
+      const totalWithdrawalsAmount = Number(totalWithdrawalsResult[0]?.total || 0);
+      const onlineNow = connectedUsers.size;
+
+      const now = new Date();
+      const projectStartDate = oldestUserResult[0]?.createdAt ? new Date(oldestUserResult[0].createdAt) : now;
+      const projectAgeDays = Math.floor((now.getTime() - projectStartDate.getTime()) / (1000 * 60 * 60 * 24));
+
+      let membership = 'Free';
+      let userJoinedDate: string | null = null;
+      if (req.user?.user) {
+        const u = req.user.user;
+        if (u.membershipPlan && u.membershipPlan !== 'free') {
+          membership = u.membershipPlan.charAt(0).toUpperCase() + u.membershipPlan.slice(1);
+        }
+        if (u.createdAt) {
+          userJoinedDate = new Date(u.createdAt).toISOString();
+        }
+      }
+
+      res.json({
+        totalUsers,
+        onlineNow,
+        totalWithdrawals: totalWithdrawalsAmount,
+        projectAgeDays,
+        projectStartDate: projectStartDate.toISOString(),
+        membership,
+        userJoinedDate,
+      });
+    } catch (error) {
+      console.error('Project stats error:', error);
+      res.status(500).json({ message: 'Failed to fetch project stats' });
+    }
+  });
+
   // Get channel configuration for frontend
   app.get('/api/config/channel', (req: any, res) => {
     res.json(getChannelConfig());
