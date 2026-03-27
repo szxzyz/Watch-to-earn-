@@ -108,12 +108,17 @@ export default {
             opacity: "1",
           },
         },
+        "shimmer": {
+          "0%": { transform: "translateX(-100%)" },
+          "100%": { transform: "translateX(200%)" },
+        },
       },
       animation: {
         "accordion-down": "accordion-down 0.2s ease-out",
         "accordion-up": "accordion-up 0.2s ease-out",
         "pulse-ring": "pulse-ring 2s cubic-bezier(0.455, 0.03, 0.515, 0.955) infinite",
         "slideInUp": "slideInUp 0.5s ease-out",
+        "shimmer": "shimmer 2.5s ease-in-out infinite",
       },
     },
   },
