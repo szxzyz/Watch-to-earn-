@@ -220,7 +220,7 @@ export default function MenuPopup({ onClose }: MenuPopupProps) {
                       <StatCard icon={<Wifi className="w-4 h-4 text-green-400" />} label="Online Now" value={fmtNum(projectStats.onlineNow)} accent="green" live />
                       <StatCard icon={<CalendarDays className="w-4 h-4 text-purple-400" />} label="Project Age" value={fmtAge(projectStats.projectAgeDays)} accent="purple" />
                       <StatCard icon={<TrendingUp className="w-4 h-4 text-[#F5C542]" />} label="Earnings Distributed" value={`${fmtNum(projectStats.totalEarnings)} SAT`} accent="yellow" />
-                      <StatCard icon={<Receipt className="w-4 h-4 text-cyan-400" />} label="Total Withdrawals" value={fmtNum(projectStats.totalWithdrawalsCount)} accent="cyan" wide />
+                      <StatCard icon={<Receipt className="w-4 h-4 text-cyan-400" />} label="Total Withdrawals" value={`${fmtNum(projectStats.totalWithdrawalsAmount)} SAT`} accent="cyan" wide />
                     </div>
                   </div>
 

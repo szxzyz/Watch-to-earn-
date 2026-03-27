@@ -230,29 +230,18 @@ export default function AdWatchingSection({ user, section = 'section1' }: AdWatc
     : (appSettings?.ad_section2_reward || '0.0001');
 
   return (
-    <div className="bg-[#141414] border border-white/5 rounded-2xl p-3 flex flex-col gap-2.5 shadow-[0_4px_20px_rgba(0,0,0,0.4)] relative overflow-hidden group">
+    <div className="bg-[#141414] border border-white/5 rounded-2xl p-4 flex flex-col gap-3 shadow-[0_4px_20px_rgba(0,0,0,0.4)] relative overflow-hidden group">
       <div className="absolute -inset-1 bg-gradient-to-r from-white/0 via-white/3 to-white/0 opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
 
-      <div className="flex items-center gap-2.5 relative z-10">
-        <div className="w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0 bg-[#0d0d0d] border border-white/5 overflow-hidden shadow-inner">
-          <img
-            src="/images/ads_icon.png"
-            alt="Ads"
-            className="w-full h-full object-cover opacity-80 group-hover:opacity-100 transition-opacity"
-          />
-        </div>
-        <div className="flex-1 min-w-0">
-          <div className="flex flex-col gap-0.5">
-            <span className="text-white text-[12px] font-black tabular-nums leading-none">{sectionReward}/h</span>
-            <span className="text-[#8E8E93] text-[9px] font-bold uppercase tracking-wider leading-none">AD ({adsWatchedToday}/{dailyLimit})</span>
-          </div>
-        </div>
+      <div className="flex-1 min-w-0 relative z-10 flex flex-col items-center text-center gap-1">
+        <span className="text-white text-[15px] font-black tabular-nums leading-none">+{sectionReward} SAT/h</span>
+        <span className="text-[#8E8E93] text-[10px] font-bold uppercase tracking-wider leading-none">24 hours of validity</span>
       </div>
 
       <Button
         onClick={handleStartEarning}
         disabled={isShowingAds || adsWatchedToday >= dailyLimit}
-        className="relative z-10 w-full rounded-xl h-9 font-black text-[11px] uppercase tracking-widest bg-[#F5C542] hover:bg-yellow-400 text-black border-none transition-all active:scale-95 shadow-[0_0_20px_rgba(245,197,66,0.15)]"
+        className="relative z-10 w-full rounded-xl h-10 font-black text-[11px] uppercase tracking-widest bg-[#F5C542] hover:bg-yellow-400 text-black border-none transition-all active:scale-95 shadow-[0_0_20px_rgba(245,197,66,0.15)]"
       >
         {isShowingAds ? (
           <div className="flex items-center gap-2">
@@ -262,7 +251,7 @@ export default function AdWatchingSection({ user, section = 'section1' }: AdWatc
         ) : (
           <span className="flex items-center gap-1.5">
             <Play className="w-3 h-3 fill-current" />
-            Claim
+            {adsWatchedToday}/{dailyLimit}
           </span>
         )}
       </Button>

@@ -3,15 +3,17 @@ import { useEffect, useRef } from "react";
 interface MatrixMiningCounterProps {
   miningAmount: number;
   miningRate: number;
+  balanceFormat?: 'SAT' | 'BTC';
 }
 
-export function MatrixMiningCounter({ miningAmount, miningRate }: MatrixMiningCounterProps) {
+export function MatrixMiningCounter({ miningAmount, miningRate, balanceFormat = 'SAT' }: MatrixMiningCounterProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const displayRef = useRef<HTMLSpanElement>(null);
   const rafRef = useRef<number>(0);
 
   const internalRef = useRef<number>(miningAmount);
   const rateRef = useRef<number>(miningRate);
+  const formatRef = useRef<'SAT' | 'BTC'>(balanceFormat);
   const lastTsRef = useRef<number>(0);
   const syncedBaseRef = useRef<number>(miningAmount);
 
@@ -19,6 +21,11 @@ export function MatrixMiningCounter({ miningAmount, miningRate }: MatrixMiningCo
   useEffect(() => {
     rateRef.current = miningRate;
   }, [miningRate]);
+
+  // Keep format ref current without restarting the RAF loop
+  useEffect(() => {
+    formatRef.current = balanceFormat;
+  }, [balanceFormat]);
 
   // Only sync the internal counter when the server gives a meaningfully
   // different base value (e.g. after a claim, reconnect, or big drift).
@@ -68,7 +75,10 @@ export function MatrixMiningCounter({ miningAmount, miningRate }: MatrixMiningCo
         internalRef.current += rateRef.current * deltaSec;
 
         if (displayRef.current) {
-          displayRef.current.textContent = internalRef.current.toFixed(8);
+          const val = internalRef.current;
+          displayRef.current.textContent = formatRef.current === 'BTC'
+            ? (val / 100_000_000).toFixed(14)
+            : val.toFixed(8);
         }
       }
       lastTsRef.current = ts;
@@ -122,7 +132,7 @@ export function MatrixMiningCounter({ miningAmount, miningRate }: MatrixMiningCo
           ref={displayRef}
           className="font-black tabular-nums tracking-tight select-none"
           style={{
-            fontSize: "1.65rem",
+            fontSize: balanceFormat === 'BTC' ? "1.1rem" : "1.65rem",
             color: "#39ff14",
             textShadow:
               "0 0 10px #39ff14cc, 0 0 24px #39ff1466, 0 0 40px #39ff1422",
@@ -130,7 +140,9 @@ export function MatrixMiningCounter({ miningAmount, miningRate }: MatrixMiningCo
             letterSpacing: "-0.02em",
           }}
         >
-          {miningAmount.toFixed(8)}
+          {balanceFormat === 'BTC'
+            ? (miningAmount / 100_000_000).toFixed(14)
+            : miningAmount.toFixed(8)}
         </span>
       </div>
     </div>
