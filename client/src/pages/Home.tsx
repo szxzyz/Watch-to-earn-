@@ -74,6 +74,23 @@ export default function Home() {
   const [, setLocation] = useLocation();
   const queryClient = useQueryClient();
 
+  const [balanceFormat, setBalanceFormat] = useState<'SAT' | 'BTC'>(() => {
+    try {
+      const saved = localStorage.getItem('mining_balance_format');
+      return (saved === 'BTC' ? 'BTC' : 'SAT') as 'SAT' | 'BTC';
+    } catch {
+      return 'SAT';
+    }
+  });
+
+  const toggleBalanceFormat = () => {
+    setBalanceFormat(prev => {
+      const next = prev === 'SAT' ? 'BTC' : 'SAT';
+      try { localStorage.setItem('mining_balance_format', next); } catch {}
+      return next;
+    });
+  };
+
   const [promoPopupOpen, setPromoPopupOpen] = useState(false);
   const [withdrawPopupOpen, setWithdrawPopupOpen] = useState(false);
   const [convertPopupOpen, setConvertPopupOpen] = useState(false);
@@ -1131,44 +1148,46 @@ export default function Home() {
       <main className="max-w-md mx-auto px-4 pt-4 pb-24">
         {/* Balance & Stats Section */}
         <div className="mb-4 relative">
-          <div className="bg-[#141414] rounded-2xl px-4 py-2 flex justify-between items-center mb-4 border border-white/5 h-12">
-            <div className="flex flex-col items-center flex-1">
-              <span className="text-[#8E8E93] text-[9px] font-semibold uppercase tracking-wider mb-0.5">Total SAT Mined</span>
-              <div className="flex items-center gap-1.5 leading-none">
-                <img src="/sat-icon.png" alt="SAT" className="w-4 h-4 rounded-full object-cover" />
-                <span className="text-white text-base font-black tabular-nums">
-                  {Math.floor(parseFloat(user?.balance || "0")).toLocaleString()}
-                </span>
-                <span className="text-[#F5C542] text-[10px] font-bold">SAT</span>
-              </div>
-            </div>
-            <div className="w-[1px] h-6 bg-white/10 mx-1"></div>
-            <div className="flex flex-col items-center flex-1">
-              <span className="text-[#8E8E93] text-[9px] font-semibold uppercase tracking-wider mb-0.5">Mining Rate</span>
-              <div className="flex items-center gap-1.5 leading-none">
-                <img src="/sat-icon.png" alt="SAT" className="w-4 h-4 rounded-full object-cover" />
-                <span className="text-white text-base font-black tabular-nums">
-                  {miningRatePerHour.toFixed(4)}
-                </span>
-                <span className="text-[#8E8E93] text-[10px] font-bold">SAT/h</span>
-              </div>
-            </div>
-          </div>
-
           <SatPriceChart />
 
           <div className="w-full">
               <div className="bg-[#141414] rounded-2xl p-4 border border-white/5 mb-4">
                 <div className="flex justify-between items-center mb-4">
                   <span className="text-[#8E8E93] text-[10px] font-black uppercase tracking-widest">{t('mining_status')}</span>
-                  <div className="flex items-center gap-1.5">
-                    <div className="w-1.5 h-1.5 bg-blue-500 rounded-full animate-pulse"></div>
-                    <span className="text-blue-500 text-[10px] font-black uppercase tracking-widest">{t('active')}</span>
+                  <div className="flex items-center gap-2">
+                    <button
+                      onClick={toggleBalanceFormat}
+                      className="flex items-center gap-1 px-2 py-0.5 rounded-full border transition-all active:scale-95"
+                      style={{
+                        background: balanceFormat === 'BTC' ? 'rgba(245,197,66,0.12)' : 'rgba(255,255,255,0.06)',
+                        borderColor: balanceFormat === 'BTC' ? 'rgba(245,197,66,0.4)' : 'rgba(255,255,255,0.12)',
+                      }}
+                    >
+                      <span
+                        className="text-[9px] font-black uppercase tracking-widest"
+                        style={{ color: balanceFormat === 'SAT' ? '#ffffff' : 'rgba(255,255,255,0.4)' }}
+                      >SAT</span>
+                      <span className="text-[9px] text-white/20 font-black">/</span>
+                      <span
+                        className="text-[9px] font-black uppercase tracking-widest"
+                        style={{ color: balanceFormat === 'BTC' ? '#F5C542' : 'rgba(255,255,255,0.4)' }}
+                      >BTC</span>
+                    </button>
+                    <div className="flex items-center gap-1.5">
+                      <div className="w-1.5 h-1.5 bg-blue-500 rounded-full animate-pulse"></div>
+                      <span className="text-white text-[10px] font-black tabular-nums">{miningRatePerHour.toFixed(4)}</span>
+                      <span className="text-[#8E8E93] text-[9px] font-bold">SAT/h</span>
+                    </div>
                   </div>
                 </div>
                 
-                <div className="mb-4">
-                  <MatrixMiningCounter miningAmount={miningAmount} miningRate={miningRate} />
+                <div className="mb-2">
+                  <MatrixMiningCounter miningAmount={miningAmount} miningRate={miningRate} balanceFormat={balanceFormat} />
+                </div>
+                <div className="flex justify-center mb-2">
+                  <span className="text-[9px] font-black uppercase tracking-widest" style={{ color: balanceFormat === 'BTC' ? '#F5C542' : '#8E8E93' }}>
+                    {balanceFormat === 'BTC' ? 'BTC Balance' : 'SAT Balance'}
+                  </span>
                 </div>
 
                 {activeBoosts.length > 0 && (
@@ -1197,6 +1216,16 @@ export default function Home() {
                 )}
 
                 <div className="pt-4 border-t border-white/5">
+                  <div className="flex items-center justify-between mb-3 px-0.5">
+                    <span className="text-[#8E8E93] text-[9px] font-black uppercase tracking-widest">Total SAT Mined</span>
+                    <div className="flex items-center gap-1.5">
+                      <img src="/sat-icon.png" alt="SAT" className="w-3.5 h-3.5 rounded-full object-cover" />
+                      <span className="text-white text-sm font-black tabular-nums">
+                        {Math.floor(parseFloat(user?.balance || "0")).toLocaleString()}
+                      </span>
+                      <span className="text-[#F5C542] text-[10px] font-bold">SAT</span>
+                    </div>
+                  </div>
                   <button
                     onClick={handleClaimClick}
                     disabled={claimMiningMutation.isPending || !canClaimMining}
