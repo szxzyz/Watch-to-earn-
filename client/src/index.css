@@ -3,6 +3,116 @@
 @tailwind components;
 @tailwind utilities;
 
+/* ─── Theme Transition ─── */
+html, html * {
+  transition: background-color 0.25s ease, color 0.2s ease, border-color 0.2s ease;
+}
+
+/* ─── Light Mode Overrides ─── */
+html[data-theme="light"] body {
+  background: #f2f3f5 !important;
+  color: #111111 !important;
+}
+
+html[data-theme="light"] h1,
+html[data-theme="light"] h2,
+html[data-theme="light"] h3,
+html[data-theme="light"] h4,
+html[data-theme="light"] h5,
+html[data-theme="light"] h6 {
+  color: #111111 !important;
+}
+
+/* Background overrides */
+html[data-theme="light"] .bg-\[\#0f0f0f\],
+html[data-theme="light"] .bg-\[\#0a0a0a\],
+html[data-theme="light"] .bg-\[\#111111\],
+html[data-theme="light"] .bg-\[\#0d0d0d\] {
+  background-color: #f2f3f5 !important;
+}
+
+html[data-theme="light"] .bg-\[\#141414\],
+html[data-theme="light"] .bg-\[\#1a1a1a\],
+html[data-theme="light"] .bg-\[\#161616\],
+html[data-theme="light"] .bg-\[\#181818\] {
+  background-color: #ffffff !important;
+}
+
+html[data-theme="light"] .bg-\[\#1f1f1f\],
+html[data-theme="light"] .bg-\[\#202020\],
+html[data-theme="light"] .bg-\[\#222222\],
+html[data-theme="light"] .bg-\[\#242424\] {
+  background-color: #ebebeb !important;
+}
+
+html[data-theme="light"] .bg-\[\#24262C\],
+html[data-theme="light"] .bg-\[\#1A1C20\],
+html[data-theme="light"] .bg-\[\#3A3D44\] {
+  background-color: #e4e5e7 !important;
+}
+
+/* Text overrides */
+html[data-theme="light"] .text-white {
+  color: #111111 !important;
+}
+
+html[data-theme="light"] .text-white\/90 { color: rgba(17,17,17,0.9) !important; }
+html[data-theme="light"] .text-white\/80 { color: rgba(17,17,17,0.8) !important; }
+html[data-theme="light"] .text-white\/70 { color: rgba(17,17,17,0.7) !important; }
+html[data-theme="light"] .text-white\/60 { color: rgba(17,17,17,0.6) !important; }
+html[data-theme="light"] .text-white\/50 { color: rgba(17,17,17,0.5) !important; }
+html[data-theme="light"] .text-white\/40 { color: rgba(17,17,17,0.45) !important; }
+html[data-theme="light"] .text-white\/35 { color: rgba(17,17,17,0.38) !important; }
+html[data-theme="light"] .text-white\/30 { color: rgba(17,17,17,0.35) !important; }
+html[data-theme="light"] .text-white\/20 { color: rgba(17,17,17,0.22) !important; }
+html[data-theme="light"] .text-white\/10 { color: rgba(17,17,17,0.12) !important; }
+
+/* Border overrides */
+html[data-theme="light"] .border-white\/5  { border-color: rgba(0,0,0,0.07) !important; }
+html[data-theme="light"] .border-white\/8  { border-color: rgba(0,0,0,0.09) !important; }
+html[data-theme="light"] .border-white\/10 { border-color: rgba(0,0,0,0.10) !important; }
+html[data-theme="light"] .border-white\/20 { border-color: rgba(0,0,0,0.14) !important; }
+html[data-theme="light"] .border-white\/30 { border-color: rgba(0,0,0,0.18) !important; }
+
+/* Backdrop blur overlay */
+html[data-theme="light"] .bg-black\/70 { background-color: rgba(0,0,0,0.45) !important; }
+html[data-theme="light"] .bg-black\/80 { background-color: rgba(0,0,0,0.50) !important; }
+html[data-theme="light"] .bg-black\/60 { background-color: rgba(0,0,0,0.38) !important; }
+html[data-theme="light"] .bg-black\/50 { background-color: rgba(0,0,0,0.32) !important; }
+html[data-theme="light"] .bg-black\/40 { background-color: rgba(0,0,0,0.26) !important; }
+
+/* White/opacity backgrounds */
+html[data-theme="light"] .bg-white\/\[0\.04\] { background-color: rgba(0,0,0,0.04) !important; }
+html[data-theme="light"] .bg-white\/5  { background-color: rgba(0,0,0,0.05) !important; }
+html[data-theme="light"] .bg-white\/10 { background-color: rgba(0,0,0,0.08) !important; }
+html[data-theme="light"] .hover\:bg-white\/5:hover  { background-color: rgba(0,0,0,0.05) !important; }
+html[data-theme="light"] .hover\:bg-white\/\[0\.04\]:hover { background-color: rgba(0,0,0,0.04) !important; }
+
+/* Input overrides in light mode */
+html[data-theme="light"] input,
+html[data-theme="light"] textarea,
+html[data-theme="light"] select {
+  background-color: #e8e9eb !important;
+  border: 1px solid rgba(0,0,0,0.14) !important;
+  color: #111111 !important;
+}
+
+html[data-theme="light"] input::placeholder,
+html[data-theme="light"] textarea::placeholder {
+  color: #888888 !important;
+}
+
+/* minimal-card-inner light override */
+html[data-theme="light"] .minimal-card-inner {
+  background: #ffffff !important;
+  border: 1px solid rgba(0,0,0,0.07) !important;
+}
+
+html[data-theme="light"] .task-box {
+  background: #ffffff !important;
+  border: 1px solid rgba(0,0,0,0.07) !important;
+}
+
 :root {
   --background: #000000;
   --foreground: #FFFFFF;

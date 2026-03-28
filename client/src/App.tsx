@@ -180,6 +180,7 @@ function AppContent() {
 }
 
 import { LanguageProvider } from "@/hooks/useLanguage";
+import { ThemeProvider } from "@/hooks/useTheme";
 import { showNotification } from "@/components/AppNotification";
 
 function App() {
@@ -438,6 +439,7 @@ function App() {
   }
 
   return (
+    <ThemeProvider>
     <QueryClientProvider client={queryClient}>
       <LanguageProvider>
         <TooltipProvider>
@@ -456,6 +458,7 @@ function App() {
         </TooltipProvider>
       </LanguageProvider>
     </QueryClientProvider>
+    </ThemeProvider>
   );
 }
 
