@@ -468,22 +468,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       // Send real-time notification to admin
       try {
-        console.log(`📤 Sending withdrawal request notification for withdrawal ${result.withdrawalId}...`);
         const { sendWithdrawalRequestNotification } = await import("./telegram");
         const fullUser = await storage.getUser(user.id);
         const withdrawal = await storage.getWithdrawal(result.withdrawalId);
         if (fullUser && withdrawal) {
-          const notifResult = await sendWithdrawalRequestNotification(withdrawal, fullUser);
-          if (notifResult) {
-            console.log(`✅ Withdrawal notification sent to admin successfully`);
-          } else {
-            console.error(`❌ Withdrawal notification to admin returned false - check TELEGRAM_BOT_TOKEN and TELEGRAM_ADMIN_ID env vars`);
-          }
-        } else {
-          console.error(`❌ Could not fetch user or withdrawal for notification: userId=${user.id}, withdrawalId=${result.withdrawalId}`);
+          await sendWithdrawalRequestNotification(withdrawal, fullUser);
         }
       } catch (notifyError) {
-        console.error("❌ Failed to send withdrawal request notification:", notifyError);
+        console.error("Failed to send withdrawal request notification:", notifyError);
       }
 
       res.json(result);
@@ -511,22 +503,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       // Send real-time notification to admin
       try {
-        console.log(`📤 Sending withdrawal notification for withdrawal ${result.withdrawalId}...`);
         const { sendWithdrawalRequestNotification } = await import("./telegram");
         const fullUser = await storage.getUser(user.id);
         const withdrawal = await storage.getWithdrawal(result.withdrawalId);
         if (fullUser && withdrawal) {
-          const notifResult = await sendWithdrawalRequestNotification(withdrawal, fullUser);
-          if (notifResult) {
-            console.log(`✅ Withdrawal notification sent to admin successfully`);
-          } else {
-            console.error(`❌ Withdrawal notification to admin returned false - check TELEGRAM_BOT_TOKEN and TELEGRAM_ADMIN_ID env vars`);
-          }
-        } else {
-          console.error(`❌ Could not fetch user or withdrawal for notification: userId=${user.id}, withdrawalId=${result.withdrawalId}`);
+          await sendWithdrawalRequestNotification(withdrawal, fullUser);
         }
       } catch (notifyError) {
-        console.error("❌ Failed to send withdrawal request notification:", notifyError);
+        console.error("Failed to send withdrawal request notification:", notifyError);
       }
 
       res.json(result);
