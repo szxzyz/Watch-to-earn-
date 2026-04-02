@@ -1,12 +1,7 @@
 import { useQuery } from "@tanstack/react-query";
-import { Menu } from "lucide-react";
 import { forwardRef } from "react";
 
-interface HeaderProps {
-  onMenuOpen?: () => void;
-}
-
-const Header = forwardRef<HTMLDivElement, HeaderProps>(({ onMenuOpen }, ref) => {
+const Header = forwardRef<HTMLDivElement>((_, ref) => {
   const { data: user } = useQuery<any>({
     queryKey: ['/api/auth/user'],
     retry: false,
@@ -20,6 +15,8 @@ const Header = forwardRef<HTMLDivElement, HeaderProps>(({ onMenuOpen }, ref) => 
   const memberSince = (user as any)?.createdAt
     ? new Date((user as any).createdAt).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })
     : null;
+
+  const satBalance = Math.floor(parseFloat((user as any)?.balance || "0"));
 
   return (
     <div
@@ -49,14 +46,13 @@ const Header = forwardRef<HTMLDivElement, HeaderProps>(({ onMenuOpen }, ref) => 
           </div>
         </div>
 
-        {onMenuOpen && (
-          <button
-            onClick={onMenuOpen}
-            className="w-10 h-10 flex items-center justify-center rounded-xl bg-white/5 border border-white/10 active:scale-95 transition-transform"
-          >
-            <Menu className="w-5 h-5 text-white/70" />
-          </button>
-        )}
+        {/* SAT Balance */}
+        <div className="flex items-center gap-1.5 bg-[#141414] border border-white/8 rounded-2xl px-3 py-2">
+          <img src="/sat-icon.png" alt="SAT" className="w-4 h-4 rounded-full object-cover" />
+          <span className="text-white font-black text-sm tabular-nums">
+            {satBalance.toLocaleString()}
+          </span>
+        </div>
       </div>
     </div>
   );
