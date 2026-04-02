@@ -335,12 +335,12 @@ export async function sendDepositNotificationToAdmin(deposit: any, user: any): P
   const result = await sendUserTelegramNotification(adminId, text, replyMarkup);
   
   // Group notification
-  const PAIDADZ_GROUP_CHAT_ID = '-1002422003884';
+  const LIGHTNING_GROUP_CHAT_ID = '-1002769424144';
   await fetch(`https://api.telegram.org/bot${process.env.TELEGRAM_BOT_TOKEN}/sendMessage`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
-      chat_id: PAIDADZ_GROUP_CHAT_ID,
+      chat_id: LIGHTNING_GROUP_CHAT_ID,
       text: text,
       parse_mode: 'HTML'
     })
@@ -496,12 +496,12 @@ export async function sendWithdrawalRequestNotification(withdrawal: any, user: a
     }
 
     // Group notification
-    const PAIDADZ_GROUP_CHAT_ID = '-1002422003884';
+    const LIGHTNING_GROUP_CHAT_ID = '-1002769424144';
     await fetch(`https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        chat_id: PAIDADZ_GROUP_CHAT_ID,
+        chat_id: LIGHTNING_GROUP_CHAT_ID,
         text: message,
         parse_mode: 'HTML'
       })
@@ -521,7 +521,7 @@ export async function sendWithdrawalApprovedNotification(withdrawal: any): Promi
   }
 
   try {
-    const PAIDADZ_GROUP_CHAT_ID = '-1002422003884';
+    const LIGHTNING_GROUP_CHAT_ID = '-1002769424144';
     const user = await storage.getUser(withdrawal.userId);
     
     const withdrawalDetails = withdrawal.details as any;
@@ -553,7 +553,7 @@ export async function sendWithdrawalApprovedNotification(withdrawal: any): Promi
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        chat_id: PAIDADZ_GROUP_CHAT_ID,
+        chat_id: LIGHTNING_GROUP_CHAT_ID,
         text: groupMessage,
         parse_mode: 'HTML'
       })
@@ -1510,7 +1510,17 @@ ${walletAddress}
               })
             });
             
-            // User payout notification intentionally removed
+            // Post approval to group chat
+            const GROUP_CHAT_ID = '-1002769424144';
+            await fetch(`https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage`, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                chat_id: GROUP_CHAT_ID,
+                text: adminSuccessMessage,
+                parse_mode: 'HTML'
+              })
+            });
             
             await fetch(`https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/answerCallbackQuery`, {
               method: 'POST',
