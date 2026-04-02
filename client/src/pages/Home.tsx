@@ -12,7 +12,7 @@ import InvitePopup from "@/components/InvitePopup";
 import { useLanguage } from "@/hooks/useLanguage";
 import { MatrixMiningCounter } from "@/components/MatrixMiningCounter";
 import Header from "@/components/Header";
-import { Award, Wallet, RefreshCw, Flame, Ticket, Info, User as UserIcon, Clock, Loader2, Gift, Rocket, X, Bug, DollarSign, Coins, Send, Users, Check, ExternalLink, Plus, CalendarCheck, Bell, Star, Play, Zap, Settings, Film, Tv, ClipboardList, UserPlus, Share2, Copy, LogOut, Download, ShieldCheck, Menu } from "lucide-react";
+import { Award, Wallet, RefreshCw, Flame, Ticket, Info, User as UserIcon, Clock, Loader2, Gift, Rocket, X, Bug, DollarSign, Coins, Send, Users, Check, ExternalLink, Plus, CalendarCheck, Bell, Star, Play, Zap, Settings, Film, Tv, ClipboardList as TaskIcon, UserPlus, Share2, Copy, LogOut, Download, ShieldCheck } from "lucide-react";
 import { DiamondIcon } from "@/components/DiamondIcon";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -22,7 +22,8 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { AnimatePresence, motion } from "framer-motion";
 import WithdrawalPopup from "@/components/WithdrawalPopup";
-import MenuPopup from "@/components/MenuPopup";
+import HomeMenuSection from "@/components/HomeMenuSection";
+import TaskPopup from "@/components/TaskPopup";
 
 
 // Unified Task Interface
@@ -97,7 +98,7 @@ export default function Home() {
   const [boosterPopupOpen, setBoosterPopupOpen] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [inviteOpen, setInviteOpen] = useState(false);
-  const [menuOpen, setMenuOpen] = useState(false);
+  const [taskOpen, setTaskOpen] = useState(false);
   const headerRef = useRef<HTMLDivElement>(null);
   const [headerHeight, setHeaderHeight] = useState(88);
 
@@ -1157,7 +1158,7 @@ export default function Home() {
 
   return (
     <Layout>
-      <Header ref={headerRef} onMenuOpen={() => setMenuOpen(true)} />
+      <Header ref={headerRef} />
       <main className="max-w-md mx-auto px-4 pb-24" style={{ paddingTop: headerHeight + 8 }}>
         {/* Balance & Stats Section */}
         <div className="mb-4 relative">
@@ -1258,6 +1259,11 @@ export default function Home() {
               </div>
 
           </div>
+        </div>
+
+        {/* Menu Section - directly on home page */}
+        <div className="mb-4">
+          <HomeMenuSection />
         </div>
 
       </main>
@@ -1451,17 +1457,17 @@ export default function Home() {
             {/* Divider */}
             <div className="w-px h-8 bg-white/5 flex-shrink-0" />
 
-            {/* Menu */}
+            {/* Task */}
             <button
-              onClick={() => setMenuOpen(true)}
+              onClick={() => setTaskOpen(true)}
               className="group flex-1 flex flex-col items-center py-4 gap-1.5 active:opacity-70 transition-opacity"
             >
-              <Menu
+              <TaskIcon
                 className="text-white/40 group-hover:text-white/70 transition-colors"
                 style={{ width: 20, height: 20, strokeWidth: 1.6 }}
               />
               <span className="text-[9px] font-semibold text-white/30 tracking-[0.12em] uppercase group-hover:text-white/50 transition-colors">
-                Menu
+                Task
               </span>
             </button>
           </div>
@@ -1475,7 +1481,7 @@ export default function Home() {
       )}
 
       {inviteOpen && <InvitePopup onClose={() => setInviteOpen(false)} />}
-      {menuOpen && <MenuPopup onClose={() => setMenuOpen(false)} />}
+      {taskOpen && <TaskPopup onClose={() => setTaskOpen(false)} />}
 
       <WithdrawalPopup 
         open={withdrawPopupOpen}
