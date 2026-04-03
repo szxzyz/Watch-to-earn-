@@ -6,10 +6,9 @@ import {
   ChevronRight, ArrowLeft, CheckCircle, XCircle, Clock, Loader2,
   Youtube, Instagram, Video, Link2, CheckSquare, Square, Plus, ScrollText, AlertCircle,
   BarChart3, Scale, Sparkles, Zap, TrendingUp, Activity, RefreshCw, Star,
-  Moon, Sun, Crown,
+  Moon, Sun, Crown, ClipboardList,
 } from "lucide-react";
 import { format } from "date-fns";
-import { useAuth } from "@/hooks/useAuth";
 import { useTheme } from "@/hooks/useTheme";
 import { useAdmin } from "@/hooks/useAdmin";
 import { useLocation } from "wouter";
@@ -43,14 +42,9 @@ function fmtAge(days: number): string {
 }
 
 export default function MenuPopup({ onClose }: MenuPopupProps) {
-  const { user } = useAuth();
   const { theme, setTheme } = useTheme();
   const { isAdmin } = useAdmin();
   const [, setLocation] = useLocation();
-  const photoUrl = typeof window !== "undefined" && (window as any).Telegram?.WebApp?.initDataUnsafe?.user?.photo_url;
-  const name = (user as any)?.firstName ? `${(user as any).firstName}${(user as any).lastName ? " " + (user as any).lastName : ""}` : (user as any)?.username || "User";
-  const uid = (user as any)?.referralCode || (user as any)?.id?.slice(0, 8) || "—";
-  const memberSince = (user as any)?.createdAt ? new Date((user as any).createdAt).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" }) : null;
 
   const [overlay, setOverlay] = useState<Overlay>(null);
   const [showSubmitForm, setShowSubmitForm] = useState(false);
@@ -161,26 +155,6 @@ export default function MenuPopup({ onClose }: MenuPopupProps) {
               <div className="w-10 h-1 rounded-full bg-white/20" />
             </div>
 
-            {/* Profile Info */}
-            <div className="px-5 pt-3 pb-4 flex items-center gap-3 border-b border-white/5">
-              <div className="w-12 h-12 rounded-full overflow-hidden flex-shrink-0 border border-white/10">
-                {photoUrl ? (
-                  <img src={photoUrl} alt="avatar" className="w-full h-full object-cover" />
-                ) : (
-                  <div className="w-full h-full bg-gradient-to-br from-[#F5C542] to-[#d4920a] flex items-center justify-center text-black font-black text-lg">
-                    {name[0]?.toUpperCase() || "U"}
-                  </div>
-                )}
-              </div>
-              <div className="min-w-0">
-                <p className="text-white font-black text-sm leading-none truncate">{name}</p>
-                <p className="text-white/40 text-[11px] mt-1">ID: <span className="text-[#F5C542] font-bold">{uid}</span></p>
-                {memberSince && (
-                  <p className="text-white/30 text-[10px] mt-0.5">Member since {memberSince}</p>
-                )}
-              </div>
-            </div>
-
             <div className="px-4 py-4 space-y-1.5">
               <MenuItem
                 icon={<BarChart3 className="w-5 h-5 text-blue-400" />}
@@ -203,11 +177,18 @@ export default function MenuPopup({ onClose }: MenuPopupProps) {
                 onClick={() => setOverlay("legal")}
               />
               {isAdmin && (
-                <MenuItem
-                  icon={<Crown className="w-5 h-5 text-amber-400" />}
-                  label="Admin Panel"
-                  onClick={() => { onClose(); setLocation("/admin"); }}
-                />
+                <>
+                  <MenuItem
+                    icon={<Crown className="w-5 h-5 text-amber-400" />}
+                    label="Admin Panel"
+                    onClick={() => { onClose(); setLocation("/admin"); }}
+                  />
+                  <MenuItem
+                    icon={<ClipboardList className="w-5 h-5 text-[#F5C542]" />}
+                    label="Create Task"
+                    onClick={() => { onClose(); setLocation("/task/create"); }}
+                  />
+                </>
               )}
               <ThemeMenuItem theme={theme} setTheme={setTheme} />
             </div>
