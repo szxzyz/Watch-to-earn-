@@ -1621,7 +1621,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const minimumConvertTON = minimumConvertAXN / 10000; 
       
       // Minimum clicks for task creation
-      const minimumClicks = parseInt(getSetting('minimum_clicks', '500')); // Default 500 clicks
+      const minimumClicks = parseInt(getSetting('minimum_clicks', '100')); // Default 500 clicks
       
       const withdrawalCurrency = getSetting('withdrawal_currency', 'TON');
       
@@ -3639,7 +3639,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         botTaskReward: parseInt(getSetting('bot_task_reward', '20')),
         partnerReward: parseInt(getSetting('partner_task_reward', '5')),
         minimumConvertAXN: parseInt(getSetting('minimum_convert_pad', '100')),
-        minimumClicks: parseInt(getSetting('minimum_clicks', '500')),
+        minimumClicks: parseInt(getSetting('minimum_clicks', '100')),
         seasonBroadcastActive: getSetting('season_broadcast_active', 'false') === 'true',
         referralRewardEnabled: getSetting('referral_reward_enabled', 'false') === 'true',
         referralRewardTON: parseFloat(getSetting('referral_reward_usd', '0.0005')),
@@ -5872,7 +5872,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       // Minimum clicks: 1 for partner tasks, use admin settings for others
       const minClicksSetting = await db.select().from(adminSettings).where(eq(adminSettings.settingKey, 'minimum_clicks')).limit(1);
-      const minClicksFromSettings = parseInt(minClicksSetting[0]?.settingValue || '500');
+      const minClicksFromSettings = parseInt(minClicksSetting[0]?.settingValue || '100');
       const minClicks = taskType === "partner" ? 1 : minClicksFromSettings;
       if (totalClicksRequired < minClicks) {
         return res.status(400).json({
@@ -5912,62 +5912,23 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const user = userData;
       const isAdmin = userIsAdmin;
 
-      // Admin users: use  balance and TON-based costs
-      // Regular users: use  tokens
+      // Admin users: create tasks for free (no payment deducted)
+      // Regular users: future implementation via SAT (not active yet)
       if (isAdmin) {
-        // Fetch TON-based costs for admin
-        const channelCostSetting = await db.select().from(adminSettings).where(eq(adminSettings.settingKey, 'channel_task_cost_usd')).limit(1);
-        const botCostSetting = await db.select().from(adminSettings).where(eq(adminSettings.settingKey, 'bot_task_cost_usd')).limit(1);
-        
-        const channelCostPerClick = parseFloat(channelCostSetting[0]?.settingValue || "0.003");
-        const botCostPerClick = parseFloat(botCostSetting[0]?.settingValue || "0.003");
-        
-        const costPerClick = taskType === "channel" ? channelCostPerClick : botCostPerClickTON;
-        const totalCost = costPerClick * totalClicksRequired;
+        console.log('🔑 Admin task creation - free (no payment deducted)');
 
-        console.log('🔑 Admin task creation - using  balance');
-        const currentTONBalance = parseFloat(user.tonBalance || '0');
-
-        console.log('💰 Payment check ():', { currentTONBalance, totalCostTON, sufficient: currentTONBalance >= totalCost });
-
-        if (currentTONBalance < totalCost) {
-          return res.status(400).json({
-            success: false,
-            message: `Insufficient  balance. You need TON${totalCost.toFixed(2)}  to create this task.`
-          });
-        }
-
-        // Deduct  balance
-        const newTONBalance = (currentTONBalance - totalCost).toFixed(10);
-        await db
-          .update(users)
-          .set({ tonBalance: newTONBalance })
-          .where(eq(users.id, userId));
-
-        console.log('✅ Payment deducted ():', { oldBalance: currentTONBalance, newBalance: newTONBalance, deducted: totalCost });
-
-        await storage.logTransaction({
-          userId,
-          amount: totalCost.toFixed(10),
-          type: "deduction",
-          source: "task_creation",
-          description: `Created ${taskType} task: ${title}`,
-          metadata: { taskId: null, taskType, totalClicksRequired, paymentMethod: '' }
-        });
-
-        // Create task with  cost
         const task = await storage.createTask({
           advertiserId: userId,
           taskType,
           title,
           link,
           totalClicksRequired,
-          costPerClick: costPerClick.toFixed(10),
-          totalCost: totalCost.toFixed(10),
+          costPerClick: "0",
+          totalCost: "0",
           status: "running",
         });
 
-        console.log('✅ Task saved to database:', task);
+        console.log('✅ Admin task saved to database:', task);
 
         broadcastUpdate({
           type: 'task:created',
@@ -9187,6 +9148,87 @@ ${walletAddress}
     } catch (error) {
       console.error('❌ Error claiming check for updates reward:', error);
       res.status(500).json({ error: 'Failed to claim reward' });
+    }
+  });
+
+  // ── Daily Tasks ──────────────────────────────────────────────────────
+  // GET /api/daily-tasks/status - returns which daily tasks have been claimed today
+  app.get('/api/daily-tasks/status', authenticateTelegram, async (req: any, res) => {
+    try {
+      const userId = req.user?.user?.id;
+      if (!userId) return res.status(401).json({ error: 'Unauthorized' });
+
+      const todayStr = new Date().toISOString().slice(0, 10);
+      const existingMissions = await db.select()
+        .from(dailyMissions)
+        .where(and(eq(dailyMissions.userId, userId), eq(dailyMissions.resetDate, todayStr)));
+
+      const claimed: string[] = existingMissions
+        .filter(m => m.claimedAt && m.missionType.startsWith('daily_task_'))
+        .map(m => m.missionType.replace('daily_task_', ''));
+
+      const user = await storage.getUser(userId);
+      res.json({ success: true, claimed, adsWatchedToday: (user as any)?.adsWatchedToday || 0 });
+    } catch (err) {
+      console.error('daily-tasks/status error:', err);
+      res.status(500).json({ error: 'Failed to get status' });
+    }
+  });
+
+  // POST /api/daily-tasks/claim - claim a daily task and apply mining boost for 24h
+  app.post('/api/daily-tasks/claim', authenticateTelegram, async (req: any, res) => {
+    try {
+      const userId = req.user?.user?.id;
+      if (!userId) return res.status(401).json({ error: 'Unauthorized' });
+
+      const { taskId } = req.body;
+      if (!taskId) return res.status(400).json({ error: 'taskId is required' });
+
+      const VALID_TASKS: Record<string, number> = {
+        login:    0.001,
+        share:    0.001,
+        ads15:    0.002,
+        ads25:    0.005,
+        ads60:    0.01,
+        ads120:   0.03,
+      };
+
+      if (!VALID_TASKS[taskId]) return res.status(400).json({ error: 'Invalid taskId' });
+
+      const todayStr = new Date().toISOString().slice(0, 10);
+      const missionType = `daily_task_${taskId}`;
+
+      const existing = await db.select()
+        .from(dailyMissions)
+        .where(and(eq(dailyMissions.userId, userId), eq(dailyMissions.missionType, missionType), eq(dailyMissions.resetDate, todayStr)))
+        .limit(1);
+
+      if (existing.length > 0 && existing[0].claimedAt) {
+        return res.status(400).json({ error: 'Already claimed today' });
+      }
+
+      const boostRatePerHour = VALID_TASKS[taskId];
+      const boostRatePerSecond = boostRatePerHour / 3600;
+      const expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000);
+
+      await storage.addMiningBoost({
+        userId,
+        planId: `daily_task_${taskId}`,
+        miningRate: boostRatePerSecond.toFixed(10),
+        startTime: new Date(),
+        expiresAt,
+      });
+
+      if (existing.length > 0) {
+        await db.update(dailyMissions).set({ completed: true, claimedAt: new Date() }).where(eq(dailyMissions.id, existing[0].id));
+      } else {
+        await db.insert(dailyMissions).values({ userId, missionType, completed: true, claimedAt: new Date(), resetDate: todayStr });
+      }
+
+      res.json({ success: true, boostRatePerHour, message: `+${boostRatePerHour} SAT/h boost applied for 24h!` });
+    } catch (err) {
+      console.error('daily-tasks/claim error:', err);
+      res.status(500).json({ error: 'Failed to claim task' });
     }
   });
 
