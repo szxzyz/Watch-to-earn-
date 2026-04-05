@@ -7,6 +7,7 @@ import {
 import { showNotification } from "@/components/AppNotification";
 import { motion, AnimatePresence } from "framer-motion";
 import { useAuth } from "@/hooks/useAuth";
+import { formatHashrate } from "@/lib/hashrate";
 
 interface PromotedTask {
   id: string;
@@ -109,7 +110,7 @@ export default function TaskPopup({ onClose }: TaskPopupProps) {
       queryClient.invalidateQueries({ queryKey: ["/api/daily-tasks/status"] });
       queryClient.invalidateQueries({ queryKey: ["/api/mining/state"] });
       if (data.taskId !== "login") {
-        showNotification(`+${data.boostRatePerHour} SAT/h boost for 24h!`, "success");
+        showNotification(`+${formatHashrate(data.boostRatePerHour)} boost for 24h!`, "success");
       }
     },
     onError: (error: any) => {
@@ -205,7 +206,7 @@ export default function TaskPopup({ onClose }: TaskPopupProps) {
       queryClient.invalidateQueries({ queryKey: ["/api/auth/user"] });
       queryClient.invalidateQueries({ queryKey: ["/api/tasks/home/unified"] });
       const sat = Number(data.reward ?? 0);
-      showNotification(`+${sat.toLocaleString()} SAT earned!`, "success");
+      showNotification(`+${formatHashrate(sat)} earned!`, "success");
     },
     onError: (error: any) => {
       showNotification(error.message || "Failed to claim reward", "error");
@@ -289,7 +290,7 @@ export default function TaskPopup({ onClose }: TaskPopupProps) {
                         <div className="min-w-0">
                           <p className="text-white font-bold text-sm leading-snug truncate">{task.label}</p>
                           <p className="text-[#F5C542] text-[11px] font-bold mt-0.5">
-                            +{task.rewardPerHour} SAT/h boost
+                            +{formatHashrate(task.rewardPerHour)}
                           </p>
                           {isLocked && (
                             <p className="text-white/30 text-[10px] mt-0.5">
@@ -374,7 +375,7 @@ export default function TaskPopup({ onClose }: TaskPopupProps) {
                             <div className="min-w-0">
                               <p className="text-white font-bold text-sm leading-snug truncate">{task.title}</p>
                               <p className="text-[#F5C542] text-[11px] font-bold mt-0.5">
-                                +{task.rewardAXN.toLocaleString()} SAT
+                                +{formatHashrate(task.rewardAXN)}
                               </p>
                             </div>
                           </div>
@@ -409,7 +410,7 @@ export default function TaskPopup({ onClose }: TaskPopupProps) {
                           </div>
                           <div className="min-w-0">
                             <p className="text-white/60 font-bold text-sm leading-snug truncate">{task.title}</p>
-                            <p className="text-green-400 text-[11px] font-bold mt-0.5">+{task.rewardAXN.toLocaleString()} SAT</p>
+                            <p className="text-green-400 text-[11px] font-bold mt-0.5">+{formatHashrate(task.rewardAXN)}</p>
                           </div>
                         </div>
                         <div className="flex-shrink-0 h-9 px-4 rounded-xl bg-green-500/10 border border-green-500/20 flex items-center">
