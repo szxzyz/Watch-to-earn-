@@ -1,9 +1,12 @@
 import { useState, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import {
-  Send, ExternalLink, CheckCircle, Loader2, Zap, LogIn, Share2,
-  Film, MonitorPlay, Tv, Play, Globe, Target,
+  CheckCircle, Loader2,
 } from "lucide-react";
+import { RiLoginCircleFill, RiShareForwardFill, RiRobotFill } from "react-icons/ri";
+import { MdOndemandVideo } from "react-icons/md";
+import { BsLightningChargeFill } from "react-icons/bs";
+import { FaFire, FaGem, FaTelegramPlane, FaGlobe } from "react-icons/fa";
 import { showNotification } from "@/components/AppNotification";
 import { motion, AnimatePresence } from "framer-motion";
 import { useAuth } from "@/hooks/useAuth";
@@ -36,12 +39,12 @@ interface DailyTaskDef {
 }
 
 const DAILY_TASKS: DailyTaskDef[] = [
-  { id: "login",  label: "Login",                icon: <Zap className="w-5 h-5 text-[#F5C542]" />,        rewardPerHour: 0.001, isLogin: true },
-  { id: "share",  label: "Share App",             icon: <Globe className="w-5 h-5 text-[#F5C542]" />,      rewardPerHour: 0.001, isShare: true },
-  { id: "ads15",  label: "Active 15 Ad Miner",    icon: <Zap className="w-5 h-5 text-[#F5C542]" />,        rewardPerHour: 0.002, requiredAds: 15 },
-  { id: "ads25",  label: "Active 25 Ad Miner",    icon: <Target className="w-5 h-5 text-[#F5C542]" />,     rewardPerHour: 0.005, requiredAds: 25 },
-  { id: "ads60",  label: "Active 60 Ad Miner",    icon: <Target className="w-5 h-5 text-[#F5C542]" />,     rewardPerHour: 0.01,  requiredAds: 60 },
-  { id: "ads120", label: "Active 120 Ad Miner",   icon: <Target className="w-5 h-5 text-[#F5C542]" />,     rewardPerHour: 0.03,  requiredAds: 120 },
+  { id: "login",  label: "Login",                icon: <RiLoginCircleFill className="w-5 h-5" style={{ color: "#a78bfa" }} />,        rewardPerHour: 0.001, isLogin: true },
+  { id: "share",  label: "Share App",             icon: <RiShareForwardFill className="w-5 h-5" style={{ color: "#38bdf8" }} />,      rewardPerHour: 0.001, isShare: true },
+  { id: "ads15",  label: "Active 15 Ad Miner",    icon: <MdOndemandVideo className="w-5 h-5" style={{ color: "#34d399" }} />,         rewardPerHour: 0.002, requiredAds: 15 },
+  { id: "ads25",  label: "Active 25 Ad Miner",    icon: <BsLightningChargeFill className="w-5 h-5" style={{ color: "#F5C542" }} />,   rewardPerHour: 0.005, requiredAds: 25 },
+  { id: "ads60",  label: "Active 60 Ad Miner",    icon: <FaFire className="w-5 h-5" style={{ color: "#fb923c" }} />,                  rewardPerHour: 0.01,  requiredAds: 60 },
+  { id: "ads120", label: "Active 120 Ad Miner",   icon: <FaGem className="w-5 h-5" style={{ color: "#22d3ee" }} />,                   rewardPerHour: 0.03,  requiredAds: 120 },
 ];
 
 export default function TaskPopup({ onClose }: TaskPopupProps) {
@@ -224,8 +227,9 @@ export default function TaskPopup({ onClose }: TaskPopupProps) {
   };
 
   const getPromotedIcon = (task: PromotedTask) => {
-    if (task.taskType === "channel") return <Send className="w-5 h-5 text-[#F5C542]" />;
-    return <Globe className="w-5 h-5 text-[#F5C542]" />;
+    if (task.taskType === "channel") return <FaTelegramPlane className="w-5 h-5" style={{ color: "#38bdf8" }} />;
+    if (task.taskType === "bot") return <RiRobotFill className="w-5 h-5" style={{ color: "#a78bfa" }} />;
+    return <FaGlobe className="w-5 h-5" style={{ color: "#34d399" }} />;
   };
 
   const pendingPromoted = promotedTasks.filter((t) => !allCompletedPromoted.has(t.id));

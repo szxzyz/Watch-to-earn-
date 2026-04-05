@@ -2,14 +2,15 @@ import React, { useState } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { motion, AnimatePresence } from "framer-motion";
 import {
-  Receipt, Shield, Trophy, Users, Wifi, CalendarDays,
+  Shield, Users, Wifi, CalendarDays, Trophy, Receipt, Zap,
   ChevronRight, ArrowLeft, CheckCircle, XCircle, Clock, Loader2,
-  Youtube, Instagram, Video, Link2, CheckSquare, Square, Plus, ScrollText, AlertCircle,
-  BarChart3, Scale, Sparkles, Zap, TrendingUp, Activity, RefreshCw, Star,
-  Moon, Sun, Crown, ClipboardList,
+  Youtube, Instagram, Video, CheckSquare, Square, Plus, ScrollText, AlertCircle,
+  TrendingUp, Activity, RefreshCw, Star,
 } from "lucide-react";
+import { RiBarChartFill } from "react-icons/ri";
+import { FaReceipt, FaBalanceScale, FaCrown } from "react-icons/fa";
+import { MdAddTask, MdAutoAwesome } from "react-icons/md";
 import { format } from "date-fns";
-import { useTheme } from "@/hooks/useTheme";
 import { useAdmin } from "@/hooks/useAdmin";
 import { useLocation } from "wouter";
 
@@ -42,7 +43,6 @@ function fmtAge(days: number): string {
 }
 
 export default function MenuPopup({ onClose }: MenuPopupProps) {
-  const { theme, setTheme } = useTheme();
   const { isAdmin } = useAdmin();
   const [, setLocation] = useLocation();
 
@@ -157,40 +157,39 @@ export default function MenuPopup({ onClose }: MenuPopupProps) {
 
             <div className="px-4 py-4 space-y-1.5">
               <MenuItem
-                icon={<BarChart3 className="w-5 h-5 text-blue-400" />}
+                icon={<RiBarChartFill className="w-5 h-5" style={{ color: "#60a5fa" }} />}
                 label="Project Statistics"
                 onClick={() => setOverlay("stats")}
               />
               <MenuItem
-                icon={<Sparkles className="w-5 h-5 text-[#F5C542]" />}
+                icon={<MdAutoAwesome className="w-5 h-5" style={{ color: "#F5C542" }} />}
                 label="Contest"
                 onClick={() => setOverlay("contest")}
               />
               <MenuItem
-                icon={<Receipt className="w-5 h-5 text-green-400" />}
+                icon={<FaReceipt className="w-5 h-5" style={{ color: "#4ade80" }} />}
                 label="Transactions"
                 onClick={() => setOverlay("transactions")}
               />
               <MenuItem
-                icon={<Scale className="w-5 h-5 text-purple-400" />}
+                icon={<FaBalanceScale className="w-5 h-5" style={{ color: "#c084fc" }} />}
                 label="Legal Info"
                 onClick={() => setOverlay("legal")}
               />
               {isAdmin && (
                 <>
                   <MenuItem
-                    icon={<Crown className="w-5 h-5 text-amber-400" />}
+                    icon={<FaCrown className="w-5 h-5" style={{ color: "#fbbf24" }} />}
                     label="Admin Panel"
                     onClick={() => { onClose(); setLocation("/admin"); }}
                   />
                   <MenuItem
-                    icon={<ClipboardList className="w-5 h-5 text-[#F5C542]" />}
+                    icon={<MdAddTask className="w-5 h-5" style={{ color: "#F5C542" }} />}
                     label="Create Task"
                     onClick={() => { onClose(); setLocation("/task/create"); }}
                   />
                 </>
               )}
-              <ThemeMenuItem theme={theme} setTheme={setTheme} />
             </div>
 
             <div className="h-4" />
@@ -472,64 +471,6 @@ function MenuItem({ icon, label, onClick }: { icon: React.ReactNode; label: stri
   );
 }
 
-function ThemeMenuItem({ theme, setTheme }: { theme: "dark" | "light"; setTheme: (t: "dark" | "light") => void }) {
-  const isDark = theme === "dark";
-
-  return (
-    <div className="w-full bg-[#141414] border border-white/5 rounded-2xl px-4 py-3.5">
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-3">
-          {isDark
-            ? <Moon className="w-5 h-5 text-indigo-400" />
-            : <Sun className="w-5 h-5 text-[#F5C542]" />
-          }
-          <div>
-            <span className="text-white font-bold text-sm block leading-none">Theme</span>
-            <span className="text-white/40 text-[10px] mt-0.5 block">
-              {isDark ? "Dark mode" : "Light mode"}
-            </span>
-          </div>
-        </div>
-
-        {/* Pill toggle */}
-        <button
-          onClick={() => setTheme(isDark ? "light" : "dark")}
-          className="relative flex items-center rounded-full p-[3px] transition-all active:scale-95"
-          style={{
-            background: isDark
-              ? "linear-gradient(135deg, #312e5e 0%, #1e1b4b 100%)"
-              : "linear-gradient(135deg, #fef3c7 0%, #fde68a 100%)",
-            border: isDark ? "1px solid rgba(99,102,241,0.35)" : "1px solid rgba(245,197,66,0.5)",
-          }}
-        >
-          {/* Dark option */}
-          <span
-            className={`flex items-center gap-1 rounded-full px-2.5 py-1 text-[11px] font-black transition-all duration-200 ${
-              isDark
-                ? "bg-indigo-500 text-white shadow-sm"
-                : "text-white/30 bg-transparent"
-            }`}
-          >
-            <Moon className="w-3 h-3" />
-            Dark
-          </span>
-
-          {/* Light option */}
-          <span
-            className={`flex items-center gap-1 rounded-full px-2.5 py-1 text-[11px] font-black transition-all duration-200 ${
-              !isDark
-                ? "bg-[#F5C542] text-black shadow-sm"
-                : "text-white/30 bg-transparent"
-            }`}
-          >
-            <Sun className="w-3 h-3" />
-            Light
-          </span>
-        </button>
-      </div>
-    </div>
-  );
-}
 
 const accentMap: Record<string, string> = {
   blue: "text-blue-400",

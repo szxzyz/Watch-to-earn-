@@ -1,9 +1,11 @@
 import { useState, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import {
-  Copy, Share2, Users, Zap, CheckCircle, XCircle, Loader2,
-  Link2, Sparkles, UserCheck, RefreshCw,
+  CheckCircle, XCircle, Loader2, RefreshCw,
 } from "lucide-react";
+import { RiShareForwardFill, RiUserFollowFill, RiLinkM, RiGroupFill } from "react-icons/ri";
+import { BsLightningChargeFill } from "react-icons/bs";
+import { FaGift, FaCopy } from "react-icons/fa";
 import { showNotification } from "@/components/AppNotification";
 import { motion, AnimatePresence } from "framer-motion";
 import { formatHashrate } from "@/lib/hashrate";
@@ -112,7 +114,7 @@ export default function InvitePopup({ onClose }: InvitePopupProps) {
           {/* Active Boost Banner */}
           {activeReferrals.length > 0 && (
             <div className="bg-green-500/10 border border-green-500/20 rounded-2xl px-4 py-3 flex items-center gap-3">
-              <Zap className="w-5 h-5 text-green-400 flex-shrink-0" />
+              <BsLightningChargeFill className="w-5 h-5 flex-shrink-0" style={{ color: "#4ade80" }} />
               <div>
                 <p className="text-green-400 font-black text-sm">
                   Active Boost: +{formatHashrate(totalBoost)}
@@ -129,21 +131,21 @@ export default function InvitePopup({ onClose }: InvitePopupProps) {
             <p className="text-white/30 text-[10px] font-black uppercase tracking-widest mb-2.5 px-0.5">How It Works</p>
             <div className="space-y-2">
               <div className="bg-[#141414] border border-white/5 rounded-2xl p-3.5 flex items-start gap-3">
-                <Link2 className="w-4 h-4 text-[#F5C542] flex-shrink-0 mt-0.5" />
+                <RiLinkM className="w-4 h-4 flex-shrink-0 mt-0.5" style={{ color: "#F5C542" }} />
                 <div>
                   <p className="text-white text-xs font-bold">Share your link</p>
                   <p className="text-white/50 text-xs mt-0.5">Send your unique invite link to friends.</p>
                 </div>
               </div>
               <div className="bg-[#141414] border border-white/5 rounded-2xl p-3.5 flex items-start gap-3">
-                <UserCheck className="w-4 h-4 text-[#F5C542] flex-shrink-0 mt-0.5" />
+                <RiUserFollowFill className="w-4 h-4 flex-shrink-0 mt-0.5" style={{ color: "#38bdf8" }} />
                 <div>
                   <p className="text-white text-xs font-bold">Friend joins &amp; stays active</p>
                   <p className="text-white/50 text-xs mt-0.5">They must join the channel to count.</p>
                 </div>
               </div>
               <div className="bg-[#141414] border border-white/5 rounded-2xl p-3.5 flex items-start gap-3">
-                <Sparkles className="w-4 h-4 text-[#F5C542] flex-shrink-0 mt-0.5" />
+                <FaGift className="w-4 h-4 flex-shrink-0 mt-0.5" style={{ color: "#a78bfa" }} />
                 <div>
                   <p className="text-white text-xs font-bold">You earn +{formatHashrate(0.01)} per friend</p>
                   <p className="text-white/50 text-xs mt-0.5">More friends = faster mining speed.</p>
@@ -164,7 +166,7 @@ export default function InvitePopup({ onClose }: InvitePopupProps) {
                 disabled={!referralLink}
                 className="h-11 flex items-center justify-center gap-2 bg-white/[0.07] hover:bg-white/10 border border-white/5 text-white rounded-2xl text-xs font-bold transition-all active:scale-[0.98] disabled:opacity-40"
               >
-                <Copy className="w-3.5 h-3.5" />
+                <FaCopy className="w-3.5 h-3.5" style={{ color: "#94a3b8" }} />
                 Copy Link
               </button>
               <button
@@ -175,7 +177,7 @@ export default function InvitePopup({ onClose }: InvitePopupProps) {
                 {isSharing ? (
                   <Loader2 className="w-3.5 h-3.5 animate-spin" />
                 ) : (
-                  <Share2 className="w-3.5 h-3.5" />
+                  <RiShareForwardFill className="w-4 h-4" />
                 )}
                 {isSharing ? "Sharing..." : "Share"}
               </button>
@@ -186,7 +188,7 @@ export default function InvitePopup({ onClose }: InvitePopupProps) {
           <div>
             <div className="flex items-center justify-between mb-2.5 px-0.5">
               <p className="text-white/30 text-[10px] font-black uppercase tracking-widest flex items-center gap-1.5">
-                <Users className="w-3.5 h-3.5" />
+                <RiGroupFill className="w-3.5 h-3.5" style={{ color: "#64748b" }} />
                 Your Friends ({referrals.length})
               </p>
               {referrals.length > 0 && (
@@ -206,7 +208,7 @@ export default function InvitePopup({ onClose }: InvitePopupProps) {
               </div>
             ) : referrals.length === 0 ? (
               <div className="text-center py-10">
-                <Users className="w-8 h-8 text-white/10 mx-auto mb-3" />
+                <RiGroupFill className="w-8 h-8 mx-auto mb-3" style={{ color: "rgba(255,255,255,0.1)" }} />
                 <p className="text-white/30 text-sm font-bold">No friends invited yet</p>
                 <p className="text-white/20 text-xs mt-1">Share your link to start boosting!</p>
               </div>

@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useCallback } from "react";
 import { useMutation, useQueryClient, useQuery } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
 import { showNotification } from "@/components/AppNotification";
@@ -18,6 +18,7 @@ export default function WithdrawalPopup({ open, onOpenChange, tonBalance }: With
   const queryClient = useQueryClient();
   const [withdrawAddress, setWithdrawAddress] = useState("");
   const [withdrawAmount, setWithdrawAmount] = useState("");
+  const [showAdPopup, setShowAdPopup] = useState(false);
 
   const { data: appSettings } = useQuery<any>({
     queryKey: ['/api/app-settings'],
@@ -75,10 +76,6 @@ export default function WithdrawalPopup({ open, onOpenChange, tonBalance }: With
   });
 
   const handleWithdrawClick = () => {
-    if (!canWithdrawAds) {
-      showNotification(`Watch ${adsShortfall} more ads to unlock withdrawal`, "error");
-      return;
-    }
     const amount = parseFloat(withdrawAmount);
     if (isNaN(amount) || amount < minWithdraw) {
       showNotification(`Minimum withdrawal amount is ${minWithdraw} SAT`, "error");
@@ -94,6 +91,10 @@ export default function WithdrawalPopup({ open, onOpenChange, tonBalance }: With
     }
     if (!withdrawAddress.trim().endsWith("@speed.app")) {
       showNotification("Address must end with @speed.app", "error");
+      return;
+    }
+    if (!canWithdrawAds) {
+      setShowAdPopup(true);
       return;
     }
     withdrawMutation.mutate();
@@ -217,33 +218,10 @@ export default function WithdrawalPopup({ open, onOpenChange, tonBalance }: With
                 </div>
               </div>
 
-              {withdrawAdsRequired && (
-                <div className={`rounded-xl p-4 space-y-2.5 border ${canWithdrawAds ? "bg-green-500/5 border-green-500/20" : "bg-yellow-500/5 border-yellow-500/20"}`}>
-                  <p className={`text-xs font-bold leading-relaxed ${canWithdrawAds ? "text-green-400" : "text-yellow-400"}`}>
-                    To keep this app free for all users, you need to watch ads before withdrawal.
-                  </p>
-                  <p className="text-white/50 text-xs leading-relaxed">
-                    You are required to complete {adsRequiredCount} ads to process your withdrawal. Your support helps us keep this project running long-term.
-                  </p>
-                  <div className="flex items-center justify-between">
-                    <span className="text-white/40 text-[11px] font-semibold">Ads Progress</span>
-                    <span className={`text-[11px] font-black tabular-nums ${canWithdrawAds ? "text-green-400" : "text-yellow-400"}`}>
-                      {Math.min(adsWatchedToday, adsRequiredCount)}/{adsRequiredCount}
-                    </span>
-                  </div>
-                  <div className="w-full h-1.5 bg-white/10 rounded-full overflow-hidden">
-                    <div
-                      className={`h-full rounded-full transition-all ${canWithdrawAds ? "bg-green-400" : "bg-yellow-400"}`}
-                      style={{ width: `${Math.min(100, (adsWatchedToday / adsRequiredCount) * 100)}%` }}
-                    />
-                  </div>
-                </div>
-              )}
-
               <Button
                 className="w-full h-11 bg-yellow-500 hover:bg-yellow-400 text-black rounded-xl font-black text-sm uppercase tracking-widest transition-all active:scale-[0.98] disabled:opacity-50 border-0"
                 onClick={handleWithdrawClick}
-                disabled={withdrawMutation.isPending || !canWithdrawAds}
+                disabled={withdrawMutation.isPending}
               >
                 {withdrawMutation.isPending ? (
                   <Loader2 className="w-4 h-4 animate-spin" />
@@ -264,6 +242,66 @@ export default function WithdrawalPopup({ open, onOpenChange, tonBalance }: With
           </motion.div>
         </motion.div>
       )}
+
+      {/* Ad Required Popup */}
+      <AnimatePresence>
+        {showAdPopup && (
+          <motion.div
+            className="fixed inset-0 z-[300] flex items-center justify-center px-5"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+          >
+            <div
+              className="absolute inset-0 bg-black/75 backdrop-blur-sm"
+              onClick={() => setShowAdPopup(false)}
+            />
+            <motion.div
+              className="relative w-full max-w-sm bg-[#0f0f0f] border border-white/10 rounded-2xl overflow-hidden"
+              initial={{ scale: 0.92, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.92, opacity: 0 }}
+              transition={{ type: "spring", damping: 26, stiffness: 300 }}
+            >
+              <div className="px-6 py-6 text-center">
+                <div className="w-14 h-14 rounded-2xl bg-yellow-500/10 border border-yellow-500/20 flex items-center justify-center mx-auto mb-4">
+                  <span className="text-2xl">📺</span>
+                </div>
+                <h2 className="text-white font-black text-base uppercase tracking-wide mb-3">Ads Required</h2>
+                <p className="text-white/55 text-sm leading-relaxed mb-2">
+                  To keep this app free for all users, you need to watch ads before withdrawal.
+                </p>
+                <p className="text-white/40 text-sm leading-relaxed mb-4">
+                  You must complete <span className="text-yellow-400 font-black">100 ads</span> to proceed.
+                </p>
+                <p className="text-white/30 text-xs leading-relaxed mb-5">
+                  Your support helps us keep this project running long-term.
+                </p>
+                <div className="mb-5">
+                  <div className="flex items-center justify-between mb-2">
+                    <span className="text-white/35 text-[10px] font-semibold uppercase tracking-wide">Progress</span>
+                    <span className="text-yellow-400 text-xs font-black tabular-nums">
+                      {Math.min(adsWatchedToday, adsRequiredCount)}/{adsRequiredCount}
+                    </span>
+                  </div>
+                  <div className="w-full h-1.5 bg-white/8 rounded-full overflow-hidden">
+                    <div
+                      className="h-full bg-gradient-to-r from-yellow-500 to-yellow-300 rounded-full transition-all"
+                      style={{ width: `${Math.min(100, (adsWatchedToday / adsRequiredCount) * 100)}%` }}
+                    />
+                  </div>
+                </div>
+                <button
+                  onClick={() => setShowAdPopup(false)}
+                  className="w-full h-11 bg-white/6 border border-white/10 text-white/60 rounded-xl font-black text-sm uppercase tracking-widest transition-all active:scale-[0.98] hover:text-white/80"
+                >
+                  Close
+                </button>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </AnimatePresence>
   );
 }
