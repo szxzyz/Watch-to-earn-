@@ -1314,28 +1314,28 @@ export default function Home() {
         <div className="mb-4">
           <button
             onClick={() => setTaskOpen(true)}
-            className="w-full rounded-2xl active:scale-[0.97] transition-all duration-150 relative overflow-hidden"
-            style={{
-              background: 'linear-gradient(135deg, #F5C542 0%, #e6a800 40%, #c97f00 100%)',
-              boxShadow: '0 4px 24px rgba(245,197,66,0.45), 0 1px 0 rgba(255,255,255,0.15) inset',
-            }}
+            className="w-full bg-[#141414] border border-white/5 rounded-2xl p-4 flex items-center gap-4 shadow-[0_4px_20px_rgba(0,0,0,0.4)] active:scale-[0.98] transition-all duration-150 relative overflow-hidden group"
           >
-            {/* Shimmer sweep */}
-            <div
-              className="absolute inset-0 pointer-events-none"
-              style={{ background: 'linear-gradient(105deg, transparent 35%, rgba(255,255,255,0.18) 50%, transparent 65%)' }}
-            />
-            {/* Subtle dot pattern */}
-            <div
-              className="absolute inset-0 pointer-events-none opacity-10"
-              style={{ backgroundImage: 'radial-gradient(circle, #000 1px, transparent 1px)', backgroundSize: '14px 14px' }}
-            />
+            <div className="absolute -inset-1 bg-gradient-to-r from-white/0 via-white/3 to-white/0 opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
 
-            <div className="relative z-10 px-4 py-3.5">
-              <p className="text-black/60 font-black text-[9px] uppercase tracking-widest leading-none mb-0.5">Daily Tasks</p>
-              <p className="text-black font-black text-base leading-tight tracking-tight">
-                Earn up to <span className="text-lg">8.33 GH/s</span>
-              </p>
+            {/* Unique stacked-star icon */}
+            <div className="relative z-10 w-12 h-12 flex-shrink-0 flex items-center justify-center">
+              <Star className="absolute w-11 h-11 text-[#F5C542]/10 fill-[#F5C542]/10" />
+              <Star className="absolute w-7 h-7 text-[#F5C542]/20 fill-[#F5C542]/20" />
+              <Zap className="relative w-5 h-5 text-[#F5C542] fill-[#F5C542]" />
+            </div>
+
+            {/* Content */}
+            <div className="relative z-10 flex-1 min-w-0 text-left">
+              <p className="text-white text-[15px] font-black tabular-nums leading-none">Up to 8.33 GH/s</p>
+              <p className="text-[#8E8E93] text-[10px] font-bold uppercase tracking-wider leading-none mt-1">Daily Tasks</p>
+            </div>
+
+            {/* Open button */}
+            <div className="relative z-10 flex-shrink-0">
+              <div className="h-10 px-5 rounded-xl font-black text-[11px] uppercase tracking-widest bg-[#F5C542] text-black flex items-center shadow-[0_0_20px_rgba(245,197,66,0.15)]">
+                Open
+              </div>
             </div>
           </button>
         </div>
