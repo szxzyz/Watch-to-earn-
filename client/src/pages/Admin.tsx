@@ -964,6 +964,7 @@ function SettingsSection() {
     withdrawalInviteRequirementEnabled: true,
     minimumInvitesForWithdrawal: "3",
     channelJoinRequired: true,
+    withdraw_ads_required: false,
   });
 
   useEffect(() => {
@@ -981,6 +982,7 @@ function SettingsSection() {
         withdrawalInviteRequirementEnabled: settingsData.withdrawalInviteRequirementEnabled !== false,
         minimumInvitesForWithdrawal: settingsData.minimumInvitesForWithdrawal?.toString() || "3",
         channelJoinRequired: settingsData.channelJoinRequired !== false,
+        withdraw_ads_required: Boolean(settingsData.withdraw_ads_required),
       });
     }
   }, [settingsData]);
@@ -1001,6 +1003,7 @@ function SettingsSection() {
         withdrawalInviteRequirementEnabled: Boolean(s.withdrawalInviteRequirementEnabled),
         minimumInvitesForWithdrawal: parseInt(s.minimumInvitesForWithdrawal),
         channelJoinRequired: Boolean(s.channelJoinRequired),
+        withdraw_ads_required: Boolean(s.withdraw_ads_required),
       };
       const r = await apiRequest("PUT", "/api/admin/settings", payload);
       const d = await r.json();
@@ -1099,6 +1102,13 @@ function SettingsSection() {
               <Input type="number" value={s.minimumInvitesForWithdrawal} onChange={e => setS({ ...s, minimumInvitesForWithdrawal: e.target.value })} className="h-8 text-xs bg-[#0a0a0a] border-white/10" />
             </SettField>
           )}
+          <div className="flex items-center justify-between py-1">
+            <div>
+              <p className="text-xs text-white font-medium">Withdraw Ads Requirement</p>
+              <p className="text-[10px] text-gray-500">Require 100 ads watched before each withdrawal</p>
+            </div>
+            <MiniToggle value={Boolean(s.withdraw_ads_required)} onChange={v => setS({ ...s, withdraw_ads_required: v })} />
+          </div>
         </SettCard>
       )}
 

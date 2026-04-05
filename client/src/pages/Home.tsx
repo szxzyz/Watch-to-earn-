@@ -12,7 +12,7 @@ import InvitePopup from "@/components/InvitePopup";
 import { useLanguage } from "@/hooks/useLanguage";
 import { MatrixMiningCounter } from "@/components/MatrixMiningCounter";
 import Header from "@/components/Header";
-import { Award, Wallet, RefreshCw, Flame, Ticket, Info, User as UserIcon, Clock, Loader2, Gift, Rocket, X, Bug, DollarSign, Coins, Send, Users, Check, ExternalLink, Plus, CalendarCheck, Bell, Star, Play, Zap, Settings, Film, Tv, ClipboardList as TaskIcon, UserPlus, Share2, Copy, LogOut, Download, ShieldCheck } from "lucide-react";
+import { Award, Wallet, RefreshCw, Flame, Ticket, Info, User as UserIcon, Clock, Loader2, Gift, Rocket, X, Bug, DollarSign, Coins, Send, Users, Check, ExternalLink, Plus, CalendarCheck, Bell, Star, Play, Zap, Settings, Film, Tv, ClipboardList as TaskIcon, UserPlus, Share2, Copy, LogOut, Download, ShieldCheck, Banknote } from "lucide-react";
 import { DiamondIcon } from "@/components/DiamondIcon";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -1273,7 +1273,8 @@ export default function Home() {
                   </div>
                 </div>
                 
-                <div className="mb-2">
+                <div className="mb-1">
+                  <p className="text-center text-[10px] font-black uppercase tracking-[0.15em] text-white/30 mb-2">Mining Power</p>
                   <MatrixMiningCounter miningAmount={miningAmount} miningRate={miningRate} balanceFormat={balanceFormat} />
                 </div>
 
@@ -1302,9 +1303,12 @@ export default function Home() {
                 </div>
               </div>
 
-              <div className="grid grid-cols-2 gap-3">
-                <AdWatchingSection user={user as User} section="section1" />
-                <AdWatchingSection user={user as User} section="section2" />
+              <div>
+                <p className="text-center text-[10px] font-black uppercase tracking-[0.12em] text-white/30 mb-2">Watch ads to boost your mining power</p>
+                <div className="grid grid-cols-2 gap-3">
+                  <AdWatchingSection user={user as User} section="section1" />
+                  <AdWatchingSection user={user as User} section="section2" />
+                </div>
               </div>
 
           </div>
@@ -1312,6 +1316,7 @@ export default function Home() {
 
         {/* Tasks Entry Card */}
         <div className="mb-4">
+          <p className="text-center text-[10px] font-black uppercase tracking-[0.12em] text-white/30 mb-2">Complete tasks to earn more rewards</p>
           <button
             onClick={() => setTaskOpen(true)}
             className="w-full bg-[#141414] border border-white/5 rounded-2xl p-4 flex items-center gap-4 shadow-[0_4px_20px_rgba(0,0,0,0.4)] active:scale-[0.98] transition-all duration-150 relative overflow-hidden group"
@@ -1499,7 +1504,7 @@ export default function Home() {
               onClick={() => setInviteOpen(true)}
               className="group flex-1 flex flex-col items-center py-4 gap-1.5 active:opacity-70 transition-opacity"
             >
-              <UserPlus
+              <Rocket
                 className="text-white/40 group-hover:text-white/70 transition-colors"
                 style={{ width: 20, height: 20, strokeWidth: 1.6 }}
               />
@@ -1523,7 +1528,6 @@ export default function Home() {
                   boxShadow: '0 0 18px rgba(245,197,66,0.35), inset 0 1px 0 rgba(255,255,255,0.2)',
                 }}
               >
-                <Download className="text-black" style={{ width: 15, height: 15, strokeWidth: 2.5 }} />
                 <span className="text-black text-[11px] font-black tracking-[0.1em] uppercase">Withdraw</span>
               </div>
             </button>
