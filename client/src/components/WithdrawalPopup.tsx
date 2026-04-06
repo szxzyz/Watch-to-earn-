@@ -2,7 +2,8 @@ import { useState, useCallback } from "react";
 import { useMutation, useQueryClient, useQuery } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
 import { showNotification } from "@/components/AppNotification";
-import { Loader2, MonitorPlay } from "lucide-react";
+import { Loader2 } from "lucide-react";
+import { MdOndemandVideo } from "react-icons/md";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -263,18 +264,15 @@ export default function WithdrawalPopup({ open, onOpenChange, tonBalance }: With
               transition={{ type: "spring", damping: 26, stiffness: 300 }}
             >
               <div className="px-5 py-5">
-                <div className="w-11 h-11 rounded-xl bg-yellow-500/10 border border-yellow-500/20 flex items-center justify-center mx-auto mb-3">
-                  <MonitorPlay className="w-5 h-5 text-yellow-400" strokeWidth={1.5} />
+                <div className="w-12 h-12 flex items-center justify-center mx-auto mb-3">
+                  <MdOndemandVideo className="w-10 h-10" style={{ color: "#34d399" }} />
                 </div>
-                <h2 className="text-white font-black text-sm text-center tracking-wide mb-3">Ad Requirement</h2>
-                <p className="text-white/55 text-xs leading-relaxed text-center mb-1.5">
-                  To keep this app free for all users, ad support is required before withdrawal.
-                </p>
-                <p className="text-white/40 text-xs leading-relaxed text-center mb-1.5">
-                  Please complete <span className="text-yellow-400 font-black">100 ads</span> to continue.
+                <h2 className="text-white font-black text-base text-center tracking-wide mb-1.5">Almost There!</h2>
+                <p className="text-white/50 text-xs leading-relaxed text-center mb-1">
+                  Watch <span className="text-yellow-400 font-black">{adsRequiredCount} ads</span> to unlock your withdrawal.
                 </p>
                 <p className="text-white/30 text-[11px] leading-relaxed text-center mb-4">
-                  Your support helps us keep this service running long-term.
+                  Ads keep this platform free for everyone. Thank you for your support!
                 </p>
                 <div className="mb-4">
                   <div className="flex items-center justify-between mb-1.5">

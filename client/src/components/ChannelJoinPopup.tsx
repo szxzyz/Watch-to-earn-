@@ -99,11 +99,11 @@ export default function ChannelJoinPopup({ telegramId, onVerified }: ChannelJoin
       <div className="w-full max-w-sm">
 
         {/* Icon */}
-        <div className="w-14 h-14 rounded-2xl bg-yellow-500/10 border border-yellow-500/20 flex items-center justify-center mx-auto mb-5">
+        <div className="w-14 h-14 flex items-center justify-center mx-auto mb-5">
           <img
             src="/btc-icon.jpg"
             alt="Bitcoin"
-            className="w-9 h-9 rounded-xl object-cover"
+            className="w-14 h-14 rounded-full object-cover"
             onError={(e) => {
               (e.target as HTMLImageElement).style.display = 'none';
             }}
