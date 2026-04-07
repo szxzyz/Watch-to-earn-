@@ -230,7 +230,7 @@ export default function AdWatchingSection({ user, section = 'section1' }: AdWatc
     : (appSettings?.ad_section2_reward || '0.0001');
 
   return (
-    <div className="bg-[#141414] border border-white/5 rounded-2xl p-4 flex flex-col gap-3 shadow-[0_4px_20px_rgba(0,0,0,0.4)] relative overflow-hidden group">
+    <div className="bg-[#111] border border-[#2a2a2a] rounded-2xl p-4 flex flex-col gap-3 shadow-[0_4px_20px_rgba(0,0,0,0.4)] relative overflow-hidden group">
       <div className="absolute -inset-1 bg-gradient-to-r from-white/0 via-white/3 to-white/0 opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
 
       <div className="flex-1 min-w-0 relative z-10 flex flex-col items-center text-center gap-1">

@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import {
   CheckCircle, XCircle, Loader2, RefreshCw,
@@ -39,7 +39,7 @@ export default function InvitePopup({ onClose }: InvitePopupProps) {
   const { data: referralData, isLoading: referralsLoading } = useQuery<{ referrals: ReferralItem[] }>({
     queryKey: ["/api/referrals/list"],
     retry: false,
-    staleTime: 30000,
+    staleTime: 60000,
   });
 
   const syncBoostsMutation = useMutation({
@@ -55,11 +55,6 @@ export default function InvitePopup({ onClose }: InvitePopupProps) {
       queryClient.invalidateQueries({ queryKey: ["/api/auth/user"] });
     },
   });
-
-  useEffect(() => {
-    syncBoostsMutation.mutate();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
 
   const { data: botInfo } = useQuery<{ username: string }>({
     queryKey: ["/api/bot-info"],
@@ -103,7 +98,7 @@ export default function InvitePopup({ onClose }: InvitePopupProps) {
         initial={{ x: "100%" }}
         animate={{ x: 0 }}
         exit={{ x: "100%" }}
-        transition={{ type: "spring", damping: 26, stiffness: 220 }}
+        transition={{ type: "tween", duration: 0.2, ease: "easeOut" }}
       >
         {/* Header */}
         <div className="px-5 py-4 border-b border-white/5 flex-shrink-0 flex items-center justify-center">
@@ -130,21 +125,21 @@ export default function InvitePopup({ onClose }: InvitePopupProps) {
           <div>
             <p className="text-white/30 text-[10px] font-black uppercase tracking-widest mb-2.5 px-0.5">How It Works</p>
             <div className="space-y-2">
-              <div className="bg-[#141414] border border-white/5 rounded-2xl p-3.5 flex items-start gap-3">
+              <div className="bg-[#1a1a1a]/50 border border-[#2a2a2a] rounded-2xl p-3.5 flex items-start gap-3">
                 <RiLinkM className="w-4 h-4 flex-shrink-0 mt-0.5" style={{ color: "#F5C542" }} />
                 <div>
                   <p className="text-white text-xs font-bold">Share your link</p>
                   <p className="text-white/50 text-xs mt-0.5">Send your unique invite link to friends.</p>
                 </div>
               </div>
-              <div className="bg-[#141414] border border-white/5 rounded-2xl p-3.5 flex items-start gap-3">
+              <div className="bg-[#1a1a1a]/50 border border-[#2a2a2a] rounded-2xl p-3.5 flex items-start gap-3">
                 <RiUserFollowFill className="w-4 h-4 flex-shrink-0 mt-0.5" style={{ color: "#38bdf8" }} />
                 <div>
                   <p className="text-white text-xs font-bold">Friend joins &amp; stays active</p>
                   <p className="text-white/50 text-xs mt-0.5">They must join the channel to count.</p>
                 </div>
               </div>
-              <div className="bg-[#141414] border border-white/5 rounded-2xl p-3.5 flex items-start gap-3">
+              <div className="bg-[#1a1a1a]/50 border border-[#2a2a2a] rounded-2xl p-3.5 flex items-start gap-3">
                 <FaGift className="w-4 h-4 flex-shrink-0 mt-0.5" style={{ color: "#a78bfa" }} />
                 <div>
                   <p className="text-white text-xs font-bold">You earn +{formatHashrate(0.01)} per friend</p>
@@ -157,7 +152,7 @@ export default function InvitePopup({ onClose }: InvitePopupProps) {
           {/* Invite link */}
           <div>
             <p className="text-white/30 text-[10px] font-black uppercase tracking-widest mb-2.5 px-0.5">Your Invite Link</p>
-            <div className="bg-[#141414] border border-white/5 rounded-2xl px-4 py-3 text-xs text-white/60 font-mono mb-3 break-all">
+            <div className="bg-[#1a1a1a]/50 border border-[#2a2a2a] rounded-2xl px-4 py-3 text-xs text-white/60 font-mono mb-3 break-all">
               {referralLink || "Loading..."}
             </div>
             <div className="grid grid-cols-2 gap-2.5">
@@ -217,7 +212,7 @@ export default function InvitePopup({ onClose }: InvitePopupProps) {
                 {referrals.map((r, i) => (
                   <div
                     key={i}
-                    className={`rounded-2xl px-4 py-3.5 border ${r.isActive ? "bg-green-500/5 border-green-500/15" : "bg-[#141414] border-white/5"}`}
+                    className={`rounded-2xl px-4 py-3.5 border ${r.isActive ? "bg-green-500/5 border-green-500/15" : "bg-[#1a1a1a]/50 border-[#2a2a2a]"}`}
                   >
                     <div className="flex items-start justify-between gap-2">
                       <div className="flex-1 min-w-0">
@@ -259,7 +254,7 @@ export default function InvitePopup({ onClose }: InvitePopupProps) {
         <div className="px-5 py-4 border-t border-white/5 flex-shrink-0">
           <button
             onClick={onClose}
-            className="w-full h-12 bg-[#141414] border border-white/8 rounded-2xl font-black uppercase tracking-wider text-white text-sm hover:bg-white/5 transition-all active:scale-[0.98]"
+            className="w-full h-12 bg-[#1a1a1a]/50 border border-[#2a2a2a] rounded-2xl font-black uppercase tracking-wider text-white text-sm hover:bg-white/5 transition-all active:scale-[0.98]"
           >
             Back
           </button>

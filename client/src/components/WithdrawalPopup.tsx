@@ -124,11 +124,11 @@ export default function WithdrawalPopup({ open, onOpenChange, tonBalance }: With
           />
 
           <motion.div
-            className="relative w-full max-w-md bg-[#0f0f0f] border border-white/10 rounded-t-2xl overflow-hidden"
+            className="relative w-full max-w-md bg-[#0d0d0d] border border-[#1a1a1a] rounded-t-3xl overflow-hidden"
             initial={{ y: "100%" }}
             animate={{ y: 0 }}
             exit={{ y: "100%" }}
-            transition={{ type: "spring", damping: 28, stiffness: 300 }}
+            transition={{ type: "tween", duration: 0.22, ease: "easeOut" }}
             style={{ maxHeight: "90vh", overflowY: "auto" }}
           >
             <div className="flex justify-center pt-3 pb-1">
@@ -140,7 +140,7 @@ export default function WithdrawalPopup({ open, onOpenChange, tonBalance }: With
             </div>
 
             <div className="px-5 py-4 space-y-4">
-              <div className="bg-white/5 rounded-xl px-4 py-3 flex justify-between items-center">
+              <div className="bg-[#1a1a1a] border border-[#2a2a2a] rounded-xl px-4 py-3 flex justify-between items-center">
                 <span className="text-white/50 text-xs font-semibold">Available Balance</span>
                 <div className="flex items-center gap-1.5">
                   <img src="/sat-icon.png" alt="SAT" className="w-4 h-4 rounded-full object-cover" />
@@ -199,7 +199,7 @@ export default function WithdrawalPopup({ open, onOpenChange, tonBalance }: With
                 </div>
               </div>
 
-              <div className="bg-white/5 rounded-xl p-4 space-y-2.5">
+              <div className="bg-[#1a1a1a] border border-[#2a2a2a] rounded-xl p-4 space-y-2.5">
                 <div className="flex justify-between items-center">
                   <span className="text-white/50 text-xs font-semibold">Withdraw Fee</span>
                   <span className="text-white text-xs font-bold">{networkFee} SAT</span>
