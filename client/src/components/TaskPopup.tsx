@@ -133,12 +133,10 @@ export default function TaskPopup({ onClose }: TaskPopupProps) {
 
     if (task.isShare) {
       const tgWebApp = (window as any).Telegram?.WebApp;
-      const botUsername = import.meta.env.VITE_BOT_USERNAME || "LightningSatsbot";
+      const botUsername = import.meta.env.VITE_BOT_USERNAME || "MoneyAXNbot";
       const refCode = (user as any)?.referralCode || "";
       const link = `https://t.me/${botUsername}?start=${refCode}`;
-      const shareUrl = `https://t.me/share/url?url=${encodeURIComponent(link)}&text=${encodeURIComponent("🔨 I’m Mining Bitcoin — simple, fast, and rewarding!
-
-⚡ No complex setup, no hardware needed — 🌟 Start your Bitcoin mining journey today and turn your time into rewards!")}`;
+      const shareUrl = `https://t.me/share/url?url=${encodeURIComponent(link)}&text=${encodeURIComponent("Join me on Lightning Sats!")}`;
       if (tgWebApp?.openTelegramLink) tgWebApp.openTelegramLink(shareUrl);
       else window.open(shareUrl, "_blank");
       setShareStarted(true);
