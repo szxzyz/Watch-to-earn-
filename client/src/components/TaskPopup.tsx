@@ -54,6 +54,18 @@ export default function TaskPopup({ onClose }: TaskPopupProps) {
   const [completedPromoted, setCompletedPromoted] = useState<Set<string>>(new Set());
   const [shareStarted, setShareStarted] = useState(false);
 
+  const { data: botInfo } = useQuery<{ username: string }>({
+    queryKey: ["/api/bot-info"],
+    queryFn: async () => {
+      const res = await fetch("/api/bot-info", { credentials: "include" });
+      if (!res.ok) return { username: "" };
+      return res.json();
+    },
+    staleTime: 300000,
+    retry: false,
+  });
+  const botUsername = botInfo?.username || import.meta.env.VITE_BOT_USERNAME || "";
+
   const adsWatchedToday: number = (user as any)?.adsWatchedToday || 0;
 
   const { data: dailyStatus, isLoading: dailyLoading } = useQuery<{
@@ -133,7 +145,6 @@ export default function TaskPopup({ onClose }: TaskPopupProps) {
 
     if (task.isShare) {
       const tgWebApp = (window as any).Telegram?.WebApp;
-      const botUsername = import.meta.env.VITE_BOT_USERNAME || "MoneyAXNbot";
       const refCode = (user as any)?.referralCode || "";
       const link = `https://t.me/${botUsername}?start=${refCode}`;
       const shareUrl = `https://t.me/share/url?url=${encodeURIComponent(link)}&text=${encodeURIComponent("Join me on Lightning Sats!")}`;

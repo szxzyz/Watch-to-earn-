@@ -138,54 +138,36 @@ export default function AdWatchingSection({ user, section = 'section1' }: AdWatc
     sessionRewardedRef.current = false;
     
     try {
-      if (section === 'section1') {
-        // LEFT SIDE: Monetag only
-        setCurrentAdStep('monetag');
-        let monetagResult;
-        try {
-          monetagResult = await showMonetagAd();
-        } catch (e) {
-          console.error('Monetag fatal error:', e);
-          monetagResult = { success: false, watchedFully: false, unavailable: false };
-        }
-        
-        if (!monetagResult.success && !monetagResult.watchedFully) {
-          setCurrentAdStep('idle');
-          setIsShowingAds(false);
-        }
+      // BOTH SECTIONS: Monetag
+      setCurrentAdStep('monetag');
+      let monetagResult;
+      try {
+        monetagResult = await showMonetagAd();
+      } catch (e) {
+        console.error('Monetag fatal error:', e);
+        monetagResult = { success: false, watchedFully: false, unavailable: false };
+      }
 
-        if (monetagResult.unavailable) {
-          showNotification("Ads not available. Please try again later.", "error");
-          setIsShowingAds(false);
-          setCurrentAdStep('idle');
-          return;
-        }
-        
-        if (!monetagResult.watchedFully) {
-          showNotification("Claimed too fast!", "error");
-          return;
-        }
-        
-        if (!monetagResult.success) {
-          showNotification("Ad failed. Please try again.", "error");
-          return;
-        }
-      } else {
-        // RIGHT SIDE: Adsgram only
-        setCurrentAdStep('adsgram');
-        let adsgramSuccess = false;
-        try {
-          adsgramSuccess = await showAdsgramAd();
-        } catch (e) {
-          console.error('Adsgram fatal error:', e);
-        }
-        
-        if (!adsgramSuccess) {
-          showNotification("Ad not available. Please try again later.", "error");
-          setCurrentAdStep('idle');
-          setIsShowingAds(false);
-          return;
-        }
+      if (!monetagResult.success && !monetagResult.watchedFully) {
+        setCurrentAdStep('idle');
+        setIsShowingAds(false);
+      }
+
+      if (monetagResult.unavailable) {
+        showNotification("Ads not available. Please try again later.", "error");
+        setIsShowingAds(false);
+        setCurrentAdStep('idle');
+        return;
+      }
+
+      if (!monetagResult.watchedFully) {
+        showNotification("Claimed too fast!", "error");
+        return;
+      }
+
+      if (!monetagResult.success) {
+        showNotification("Ad failed. Please try again.", "error");
+        return;
       }
 
       // Grant reward after ad completes
@@ -194,19 +176,8 @@ export default function AdWatchingSection({ user, section = 'section1' }: AdWatc
       if (!sessionRewardedRef.current) {
         sessionRewardedRef.current = true;
         
-        const rewardAmount = appSettings?.rewardPerAd || 2;
-        queryClient.setQueryData(["/api/auth/user"], (old: any) => {
-          if (!old) return old;
-          return {
-            ...old,
-            tonBalance: String(parseFloat(old?.tonBalance || '0') + (appSettings?.affiliateCommission || 0.1) * rewardAmount / 100),
-            balance: String(parseFloat(old?.balance || '0') + rewardAmount),
-            adsWatchedToday: (old?.adsWatchedToday || 0) + 1
-          };
-        });
-        
         try {
-          await watchAdMutation.mutateAsync(section === 'section1' ? 'monetag' : 'adsgram');
+          await watchAdMutation.mutateAsync('monetag');
         } catch (e) {
           console.error('Reward mutation failed:', e);
         }
