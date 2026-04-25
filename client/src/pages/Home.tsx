@@ -10,9 +10,8 @@ import { useLocation } from "wouter";
 import { SettingsPopup } from "@/components/SettingsPopup";
 import InvitePopup from "@/components/InvitePopup";
 import { useLanguage } from "@/hooks/useLanguage";
-import { MatrixMiningCounter } from "@/components/MatrixMiningCounter";
 import Header from "@/components/Header";
-import { Award, Wallet, RefreshCw, Flame, Ticket, Info, User as UserIcon, Clock, Loader2, Gift, Rocket, X, Bug, DollarSign, Coins, Send, Users, Check, ExternalLink, Plus, CalendarCheck, Bell, Star, Play, Zap, Settings, Film, Tv, ClipboardList as TaskIcon, UserPlus, Share2, Copy, LogOut, Download, ShieldCheck, Banknote } from "lucide-react";
+import { Award, Wallet, RefreshCw, Flame, Ticket, Info, User as UserIcon, Clock, Loader2, Gift, Rocket, X, Bug, DollarSign, Coins, Send, Users, Check, ExternalLink, Plus, CalendarCheck, Bell, Star, Play, Zap, Settings, Film, Tv, ClipboardList as TaskIcon, UserPlus, Share2, Copy, LogOut, Download, ShieldCheck, Banknote, Bitcoin, Gauge, Square } from "lucide-react";
 import { DiamondIcon } from "@/components/DiamondIcon";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -180,47 +179,48 @@ export default function Home() {
   const { data: miningState, isLoading: isLoadingMining, refetch: refetchMiningState } = useQuery<any>({
     queryKey: ['/api/mining/state'],
     retry: false,
-    staleTime: 10000,
-    refetchInterval: 30000,
+    staleTime: 0,
+    // Poll faster while mining is active so the live balance + timer stay accurate
+    refetchInterval: (query: any) => (query?.state?.data?.isActive ? 5000 : 15000),
   });
 
   const miningStateData = miningState || {};
-  const [miningAmount, setMiningAmount] = useState(0);
   const activeBoosts = miningStateData.boosts || [];
-  
-  const miningRate = parseFloat(miningStateData.rawMiningRate || "0.00001");
+
+  const miningRate = parseFloat(miningStateData.rawMiningRate || "0");
   const miningRatePerHour = miningRate * 3600;
+  const isMining = !!miningStateData.isActive;
+  const minutesAvailable: number = Number(miningStateData.minutesAvailable ?? 0);
+  const serverSecondsRemaining: number = Number(miningStateData.secondsRemaining ?? 0);
 
+  // Live local countdown (decrements between server polls)
+  const [secondsRemaining, setSecondsRemaining] = useState<number>(serverSecondsRemaining);
+  useEffect(() => { setSecondsRemaining(serverSecondsRemaining); }, [serverSecondsRemaining]);
   useEffect(() => {
-    if (miningStateData.currentMining) {
-      setMiningAmount(parseFloat(miningStateData.currentMining));
-    }
-  }, [miningStateData.currentMining]);
-
-  // Mining Pause: check if user was inactive for 48+ hours
-  useEffect(() => {
-    try {
-      const FORTY_EIGHT_HOURS = 48 * 60 * 60 * 1000;
-      const lastActive = localStorage.getItem('mining_last_active');
-      if (lastActive) {
-        const elapsed = Date.now() - parseInt(lastActive, 10);
-        if (elapsed > FORTY_EIGHT_HOURS) {
-          setIsMiningPaused(true);
-          return;
-        }
-      }
-      localStorage.setItem('mining_last_active', String(Date.now()));
-    } catch {}
-  }, []);
-
-  useEffect(() => {
-    if (isMiningPaused) return;
-    const interval = setInterval(() => {
-      setMiningAmount(prev => prev + miningRate);
+    if (!isMining) return;
+    const id = setInterval(() => {
+      setSecondsRemaining((prev) => Math.max(0, prev - 1));
     }, 1000);
-    return () => clearInterval(interval);
-  }, [miningRate, isMiningPaused]);
+    return () => clearInterval(id);
+  }, [isMining]);
 
+  // Live local balance (increments between server polls so UI feels instant)
+  const serverBalance: number = parseFloat(miningStateData.balance || (user as User)?.balance || "0");
+  const serverTodayEarnings: number = parseFloat(miningStateData.todayEarnings || "0");
+  const [liveBalance, setLiveBalance] = useState<number>(serverBalance);
+  const [liveTodayEarnings, setLiveTodayEarnings] = useState<number>(serverTodayEarnings);
+  useEffect(() => { setLiveBalance(serverBalance); }, [serverBalance]);
+  useEffect(() => { setLiveTodayEarnings(serverTodayEarnings); }, [serverTodayEarnings]);
+  useEffect(() => {
+    if (!isMining || miningRate <= 0) return;
+    const id = setInterval(() => {
+      setLiveBalance((b) => b + miningRate);
+      setLiveTodayEarnings((t) => t + miningRate);
+    }, 1000);
+    return () => clearInterval(id);
+  }, [isMining, miningRate]);
+
+  // Boost remaining-time tick (legacy)
   useEffect(() => {
     const timer = setInterval(() => {
       queryClient.setQueryData(['/api/mining/state'], (old: any) => {
@@ -237,6 +237,12 @@ export default function Home() {
     return () => clearInterval(timer);
   }, [queryClient]);
 
+  const formatCountdown = (s: number) => {
+    const m = Math.floor(s / 60);
+    const sec = s % 60;
+    return `${String(m).padStart(2, '0')}:${String(sec).padStart(2, '0')}`;
+  };
+
   const formatRemainingTime = (seconds: number) => {
     if (seconds <= 0) return "Expired";
     const days = Math.floor(seconds / (24 * 3600));
@@ -248,30 +254,42 @@ export default function Home() {
     return `${hours}h ${minutes}m ${secs}s`;
   };
 
-  const claimMiningMutation = useMutation({
-    mutationFn: async () => {
-      // Sync with server first to get accurate amount
-      await refetchMiningState();
-      const response = await apiRequest("POST", "/api/mining/claim");
-      if (!response.ok) {
-        const error = await response.json();
-        throw new Error(error.message || 'Failed to claim mining');
+  const startMiningMutation = useMutation({
+    mutationFn: async (minutes?: number) => {
+      const response = await apiRequest("POST", "/api/mining/start", minutes ? { minutes } : {});
+      const data = await response.json();
+      if (!response.ok || !data.success) {
+        throw new Error(data.message || 'Failed to start mining');
       }
-      return response.json();
+      return data;
     },
     onSuccess: (data) => {
-      queryClient.invalidateQueries({ queryKey: ["/api/auth/user"] });
       queryClient.invalidateQueries({ queryKey: ["/api/mining/state"] });
-      const claimed = Math.floor(parseFloat(data.amount || "0"));
-      showNotification(`+${claimed.toLocaleString()} SAT claimed from mining!`, "success");
+      queryClient.invalidateQueries({ queryKey: ["/api/auth/user"] });
+      showNotification(`Mining started for ${data.minutesUsed} minutes`, "success");
     },
     onError: (error: any) => {
-      showNotification(error.message, "error");
+      showNotification(error.message || 'Could not start mining', "error");
     },
   });
 
-  const minMiningClaim = 1;
-  const canClaimMining = miningState && parseFloat(miningState.currentMining || "0") >= minMiningClaim;
+  const grantMinutesMutation = useMutation({
+    mutationFn: async (minutes: number) => {
+      const response = await apiRequest("POST", "/api/mining/grant-minutes", { minutes });
+      const data = await response.json();
+      if (!response.ok || !data.success) {
+        throw new Error(data.message || 'Failed to grant minutes');
+      }
+      return data;
+    },
+    onSuccess: (data) => {
+      queryClient.invalidateQueries({ queryKey: ["/api/mining/state"] });
+      showNotification(`+${data.minutesAdded} mining minutes added`, "success");
+    },
+    onError: (error: any) => {
+      showNotification(error.message || 'Could not add minutes', "error");
+    },
+  });
 
   // Render mining section (need to find where it is in the file)
 
@@ -1210,14 +1228,17 @@ export default function Home() {
 
   const userRank = leaderboardData?.userEarnerRank?.rank;
 
-  // Values are now derived from miningState above
-
-  const handleClaimClick = () => {
-    if (miningAmount < 1) {
-      showNotification("Minimum claim is 1 SAT", "error");
+  const handleStartMining = () => {
+    if (startMiningMutation.isPending) return;
+    if (miningRate <= 0) {
+      showNotification("You need mining power. Boost your hashrate first.", "error");
       return;
     }
-    claimMiningMutation.mutate();
+    if (minutesAvailable <= 0) {
+      showNotification("You have no minutes. Tap +5 min to collect.", "error");
+      return;
+    }
+    startMiningMutation.mutate(undefined);
   };
 
   return (
@@ -1249,76 +1270,143 @@ export default function Home() {
       </AnimatePresence>
 
       <main className="max-w-md mx-auto px-4 pb-24" style={{ paddingTop: headerHeight + 8 }}>
-        {/* Balance & Stats Section */}
-        <div className="mb-4 relative">
+        {/* Balances Card */}
+        <div className="bg-[#111] rounded-2xl p-4 border border-[#2a2a2a] mb-4 flex items-center justify-between">
+          <div className="flex items-start gap-3 min-w-0">
+            <div className="w-10 h-10 rounded-full bg-[#F5C542]/10 border border-[#F5C542]/30 flex items-center justify-center flex-shrink-0">
+              <Bitcoin className="w-5 h-5 text-[#F5C542]" />
+            </div>
+            <div className="min-w-0">
+              <p className="text-white/40 text-[11px] font-bold uppercase tracking-wider leading-none">Balances</p>
+              <p className="text-white text-2xl font-black tabular-nums leading-none mt-1.5">
+                {Math.floor(liveBalance).toLocaleString()}
+              </p>
+              <p className="text-emerald-400 text-[11px] font-bold tabular-nums mt-1">
+                +{Math.floor(liveTodayEarnings).toLocaleString()} for today
+              </p>
+            </div>
+          </div>
+          <button
+            onClick={() => setWithdrawPopupOpen(true)}
+            className="h-10 px-4 rounded-xl font-black text-[11px] uppercase tracking-widest text-black flex items-center active:scale-[0.97] transition-transform flex-shrink-0"
+            style={{
+              background: 'linear-gradient(135deg, #F5C542 0%, #d4920a 100%)',
+              boxShadow: '0 0 14px rgba(245,197,66,0.25)',
+            }}
+          >
+            Withdraw
+          </button>
+        </div>
 
-          <div className="w-full">
-              {/* MINING POWER — Title outside section */}
-              <p className="text-center text-[10px] font-black uppercase tracking-[0.15em] text-white/30 mb-2">Mining Power</p>
+        {/* Mining Section */}
+        <div className="mb-4">
+          <p className="text-center text-[10px] font-black uppercase tracking-[0.15em] text-white/30 mb-2">Total mined reward</p>
 
-              <div className="bg-[#111] rounded-2xl p-4 border border-[#2a2a2a] mb-6">
-                <div className="flex justify-between items-center mb-4">
-                  <button
-                    onClick={toggleBalanceFormat}
-                    className="flex items-center gap-1 px-2 py-0.5 rounded-full border transition-all active:scale-95"
-                    style={{
-                      background: balanceFormat === 'BTC' ? 'rgba(245,197,66,0.12)' : 'rgba(255,255,255,0.06)',
-                      borderColor: balanceFormat === 'BTC' ? 'rgba(245,197,66,0.4)' : 'rgba(255,255,255,0.12)',
-                    }}
-                  >
-                    <span
-                      className="text-[9px] font-black uppercase tracking-widest"
-                      style={{ color: balanceFormat === 'SAT' ? '#ffffff' : 'rgba(255,255,255,0.4)' }}
-                    >SAT</span>
-                    <span className="text-[9px] text-white/20 font-black">/</span>
-                    <span
-                      className="text-[9px] font-black uppercase tracking-widest"
-                      style={{ color: balanceFormat === 'BTC' ? '#F5C542' : 'rgba(255,255,255,0.4)' }}
-                    >BTC</span>
-                  </button>
-                  <div className="flex items-center gap-1">
-                    <span className="text-white text-sm font-black tabular-nums">{formatHashrate(miningRatePerHour)}</span>
+          <div className="bg-[#111] rounded-2xl p-4 border border-[#2a2a2a]">
+            <div className="flex items-stretch justify-between gap-4">
+              {/* Left — Mining speed */}
+              <div className="flex items-center gap-3 min-w-0 flex-1">
+                <div className="w-10 h-10 rounded-full bg-white/5 border border-white/10 flex items-center justify-center flex-shrink-0">
+                  <Gauge className="w-5 h-5 text-[#4cd3ff]" />
+                </div>
+                <div className="min-w-0">
+                  <p className="text-white text-[15px] font-black tabular-nums leading-none">
+                    {formatHashrate(miningRatePerHour)}
+                  </p>
+                  <p className="text-white/40 text-[10px] font-bold uppercase tracking-wider mt-1.5">Mining speed</p>
+                </div>
+              </div>
+
+              {/* Right — Live mined amount */}
+              <div className="flex items-center gap-3 min-w-0 flex-1 justify-end">
+                <div className="text-right min-w-0">
+                  <p className="text-white text-[15px] font-black tabular-nums leading-none">
+                    {liveBalance.toFixed(8)}
+                  </p>
+                  <p className="text-white/40 text-[10px] font-bold uppercase tracking-wider mt-1.5">Live balance</p>
+                </div>
+                <div className="w-10 h-10 rounded-full bg-[#F5C542]/10 border border-[#F5C542]/30 flex items-center justify-center flex-shrink-0">
+                  <Bitcoin className="w-5 h-5 text-[#F5C542]" />
+                </div>
+              </div>
+            </div>
+
+            {/* Timer / Start button row */}
+            <div className="pt-4 mt-4 border-t border-white/5">
+              {isMining ? (
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2 text-white/60 text-[11px] font-bold uppercase tracking-wider">
+                      <Clock className="w-4 h-4 text-emerald-400" />
+                      <span>Mining</span>
+                    </div>
+                    <span className="text-emerald-400 text-base font-black tabular-nums">
+                      {formatCountdown(secondsRemaining)}
+                    </span>
+                  </div>
+                  <div className="w-full h-1.5 rounded-full bg-white/5 overflow-hidden">
+                    <div
+                      className="h-full rounded-full"
+                      style={{
+                        width: `${miningStateData.sessionTotalSeconds ? Math.max(0, Math.min(100, (1 - secondsRemaining / miningStateData.sessionTotalSeconds) * 100)) : 0}%`,
+                        background: 'linear-gradient(90deg, #34d399 0%, #F5C542 100%)',
+                        transition: 'width 1s linear',
+                      }}
+                    />
                   </div>
                 </div>
+              ) : (
+                <button
+                  onClick={handleStartMining}
+                  disabled={startMiningMutation.isPending || miningRate <= 0 || minutesAvailable <= 0}
+                  className="w-full h-11 rounded-xl flex items-center justify-center gap-2 font-black text-xs uppercase tracking-widest transition-all active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed"
+                  style={(!startMiningMutation.isPending && miningRate > 0 && minutesAvailable > 0) ? {
+                    background: 'linear-gradient(135deg, #F5C542 0%, #d4920a 100%)',
+                    boxShadow: '0 0 16px rgba(245,197,66,0.3)',
+                    color: '#000',
+                  } : {
+                    background: 'rgba(255,255,255,0.06)',
+                    border: '1px solid rgba(255,255,255,0.08)',
+                    color: 'rgba(255,255,255,0.3)',
+                  }}
+                >
+                  {startMiningMutation.isPending ? (
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                  ) : (
+                    <>
+                      <Play className="w-4 h-4 fill-current" />
+                      <span>Start Mining</span>
+                    </>
+                  )}
+                </button>
+              )}
+            </div>
 
-                <div className="mb-1">
-                  <MatrixMiningCounter miningAmount={miningAmount} miningRate={miningRate} balanceFormat={balanceFormat} />
-                </div>
-
-                <div className="pt-4 border-t border-white/5">
-                  <button
-                    onClick={handleClaimClick}
-                    disabled={claimMiningMutation.isPending || !canClaimMining}
-                    className="w-full h-11 rounded-xl flex items-center justify-center gap-2 font-black text-xs uppercase tracking-widest transition-all active:scale-[0.98] disabled:opacity-40 disabled:cursor-not-allowed"
-                    style={canClaimMining && !claimMiningMutation.isPending ? {
-                      background: 'linear-gradient(135deg, #F5C542 0%, #d4920a 100%)',
-                      boxShadow: '0 0 16px rgba(245,197,66,0.3)',
-                      color: '#000',
-                    } : {
-                      background: 'rgba(255,255,255,0.06)',
-                      border: '1px solid rgba(255,255,255,0.08)',
-                      color: 'rgba(255,255,255,0.3)',
-                    }}
-                  >
-                    {claimMiningMutation.isPending ? (
-                      <Loader2 className="w-4 h-4 animate-spin" />
-                    ) : (
-                      <span>Claim</span>
-                    )}
-                  </button>
-                </div>
+            {/* Minutes available + collect */}
+            <div className="mt-3 flex items-center justify-between bg-white/[0.03] rounded-xl px-3 py-2.5 border border-white/5">
+              <div className="flex items-center gap-2 min-w-0">
+                <Clock className="w-3.5 h-3.5 text-white/40 flex-shrink-0" />
+                <span className="text-white/60 text-[11px] font-bold uppercase tracking-wider">Minutes</span>
+                <span className="text-white text-sm font-black tabular-nums">{minutesAvailable}</span>
               </div>
+              <button
+                onClick={() => grantMinutesMutation.mutate(5)}
+                disabled={grantMinutesMutation.isPending}
+                className="h-7 px-3 rounded-lg bg-emerald-500/15 border border-emerald-500/30 text-emerald-400 text-[10px] font-black uppercase tracking-widest active:scale-95 transition-transform disabled:opacity-50"
+              >
+                {grantMinutesMutation.isPending ? <Loader2 className="w-3 h-3 animate-spin" /> : '+5 min'}
+              </button>
+            </div>
+          </div>
+        </div>
 
-              {/* WATCH ADS TO BOOST MINING — Title outside section */}
-              <p className="text-center text-[10px] font-black uppercase tracking-[0.12em] text-white/30 mb-2">Watch Ads to Boost Mining</p>
+        {/* WATCH ADS TO BOOST MINING — Title outside section */}
+        <p className="text-center text-[10px] font-black uppercase tracking-[0.12em] text-white/30 mb-2">Watch Ads to Boost Mining</p>
 
-              <div className="mb-6">
-                <div className="grid grid-cols-2 gap-3">
-                  <AdWatchingSection user={user as User} section="section1" />
-                  <AdWatchingSection user={user as User} section="section2" />
-                </div>
-              </div>
-
+        <div className="mb-6">
+          <div className="grid grid-cols-2 gap-3">
+            <AdWatchingSection user={user as User} section="section1" />
+            <AdWatchingSection user={user as User} section="section2" />
           </div>
         </div>
 
