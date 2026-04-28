@@ -37,7 +37,7 @@ export const users = pgTable("users", {
   lastName: text("last_name"),
   profileImageUrl: text("profile_image_url"),
   personalCode: text("personal_code"),
-  balance: decimal("balance", { precision: 20, scale: 0 }).default("0"), // AXN stored as BIGINT
+  balance: decimal("balance", { precision: 30, scale: 8 }).default("0"), // SAT balance with 8 decimals
   tonBalance: decimal("ton_balance", { precision: 30, scale: 10 }).default("0"),
   tonAppBalance: decimal("ton_app_balance", { precision: 30, scale: 10 }).default("0"),
   adsWatched: integer("ads_watched").default(0),
