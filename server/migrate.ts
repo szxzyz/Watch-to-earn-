@@ -194,7 +194,7 @@ export async function ensureDatabaseSchema(): Promise<void> {
       await db.execute(sql`UPDATE users SET mining_minutes_available = 30 WHERE mining_minutes_available IS NULL OR mining_minutes_available = 0`);
       
       // Alter existing balance columns to new precision (safely handle existing data)
-      await db.execute(sql`ALTER TABLE users ALTER COLUMN balance TYPE DECIMAL(20, 0) USING ROUND(balance)`);
+      await db.execute(sql`ALTER TABLE users ALTER COLUMN balance TYPE DECIMAL(30, 8) USING balance::decimal`);
       await db.execute(sql`ALTER TABLE users ALTER COLUMN usd_balance TYPE DECIMAL(30, 10)`);
       await db.execute(sql`ALTER TABLE users ALTER COLUMN ton_balance TYPE DECIMAL(30, 10)`);
       await db.execute(sql`ALTER TABLE users ALTER COLUMN pdz_balance TYPE DECIMAL(30, 10)`);
