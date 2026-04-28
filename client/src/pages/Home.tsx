@@ -12,7 +12,9 @@ import InvitePopup from "@/components/InvitePopup";
 import { useLanguage } from "@/hooks/useLanguage";
 import { MatrixMiningCounter } from "@/components/MatrixMiningCounter";
 import Header from "@/components/Header";
-import { Award, Wallet, RefreshCw, Flame, Ticket, Info, User as UserIcon, Clock, Loader2, Gift, Rocket, X, Bug, DollarSign, Coins, Send, Users, Check, ExternalLink, Plus, CalendarCheck, Bell, Star, Play, Zap, Settings, Film, Tv, ClipboardList as TaskIcon, UserPlus, Share2, Copy, LogOut, Download, ShieldCheck, Banknote } from "lucide-react";
+import { Award, Wallet, RefreshCw, Flame, Ticket, Info, User as UserIcon, Clock, Loader2, Gift, Rocket, X, Bug, DollarSign, Coins, Send, Users, Check, ExternalLink, Plus, CalendarCheck, Bell, Star, Play, Zap, Settings, Film, Tv, ClipboardList as TaskIcon, UserPlus, Share2, Copy, LogOut, Download, ShieldCheck, Banknote, Bitcoin, Gauge } from "lucide-react";
+import { FaCoins } from "react-icons/fa";
+import { MdMenu, MdGroups } from "react-icons/md";
 import { DiamondIcon } from "@/components/DiamondIcon";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -72,7 +74,7 @@ interface User {
 export default function Home() {
   const { user, isLoading } = useAuth();
   const { isAdmin } = useAdmin();
-  const { t } = useLanguage();
+  const { t, tText } = useLanguage();
   const [, setLocation] = useLocation();
   const queryClient = useQueryClient();
 
@@ -1254,29 +1256,39 @@ export default function Home() {
 
           <div className="w-full">
               {/* MINING POWER — Title outside section */}
-              <p className="text-center text-[10px] font-black uppercase tracking-[0.15em] text-white/30 mb-2">Mining Power</p>
+              <p className="text-center text-[10px] font-black uppercase tracking-[0.15em] text-white/30 mb-2">{tText('Mining Power')}</p>
 
               <div className="bg-[#111] rounded-2xl p-4 border border-[#2a2a2a] mb-6">
                 <div className="flex justify-between items-center mb-4">
+                  {/* Modern segmented BTC/SAT toggle */}
                   <button
                     onClick={toggleBalanceFormat}
-                    className="flex items-center gap-1 px-2 py-0.5 rounded-full border transition-all active:scale-95"
-                    style={{
-                      background: balanceFormat === 'BTC' ? 'rgba(245,197,66,0.12)' : 'rgba(255,255,255,0.06)',
-                      borderColor: balanceFormat === 'BTC' ? 'rgba(245,197,66,0.4)' : 'rgba(255,255,255,0.12)',
-                    }}
+                    className="relative flex items-center rounded-full bg-[#0d0d0d] border border-white/10 p-0.5 active:scale-95 transition-transform"
+                    aria-label="Toggle SAT/BTC"
                   >
                     <span
-                      className="text-[9px] font-black uppercase tracking-widest"
-                      style={{ color: balanceFormat === 'SAT' ? '#ffffff' : 'rgba(255,255,255,0.4)' }}
-                    >SAT</span>
-                    <span className="text-[9px] text-white/20 font-black">/</span>
+                      className={`flex items-center gap-1 px-2.5 py-1 rounded-full text-[9px] font-black uppercase tracking-widest transition-all ${
+                        balanceFormat === 'SAT'
+                          ? 'bg-white/10 text-white shadow-inner'
+                          : 'text-white/40'
+                      }`}
+                    >
+                      <FaCoins className="w-2.5 h-2.5" style={{ color: balanceFormat === 'SAT' ? '#F5C542' : 'rgba(255,255,255,0.4)' }} />
+                      SAT
+                    </span>
                     <span
-                      className="text-[9px] font-black uppercase tracking-widest"
-                      style={{ color: balanceFormat === 'BTC' ? '#F5C542' : 'rgba(255,255,255,0.4)' }}
-                    >BTC</span>
+                      className={`flex items-center gap-1 px-2.5 py-1 rounded-full text-[9px] font-black uppercase tracking-widest transition-all ${
+                        balanceFormat === 'BTC'
+                          ? 'bg-[#F5C542]/15 text-[#F5C542] shadow-inner'
+                          : 'text-white/40'
+                      }`}
+                    >
+                      <Bitcoin className="w-2.5 h-2.5" />
+                      BTC
+                    </span>
                   </button>
-                  <div className="flex items-center gap-1">
+                  <div className="flex items-center gap-1.5">
+                    <Gauge className="w-3.5 h-3.5 text-[#F5C542]" strokeWidth={2.4} />
                     <span className="text-white text-sm font-black tabular-nums">{formatHashrate(miningRatePerHour)}</span>
                   </div>
                 </div>
@@ -1497,68 +1509,88 @@ export default function Home() {
 
 
 
-      {/* Bottom Navigation */}
+      {/* Bottom Navigation — top-rounded, flush at bottom with slight side gap */}
       <div className="fixed bottom-0 left-0 right-0 z-50 flex justify-center pointer-events-none">
-        <div className="w-full max-w-md pointer-events-auto px-5 pb-5">
-          {/* Ambient glow behind the bar */}
-          <div className="absolute bottom-0 left-1/2 -translate-x-1/2 w-64 h-20 bg-[#F5C542]/8 blur-3xl rounded-full pointer-events-none" />
+        <div className="w-full max-w-md relative pointer-events-auto">
+          {/* Soft gold ambient halo behind the center action */}
+          <div
+            aria-hidden
+            className="absolute left-1/2 -translate-x-1/2 -top-4 w-44 h-16 rounded-full pointer-events-none"
+            style={{
+              background: 'radial-gradient(closest-side, rgba(245,197,66,0.22), rgba(245,197,66,0) 70%)',
+              filter: 'blur(8px)',
+            }}
+          />
 
           <div
-            className="relative flex items-center rounded-[28px] overflow-hidden"
+            className="relative flex items-center overflow-hidden"
             style={{
-              background: 'rgba(14,14,14,0.96)',
-              border: '1px solid rgba(255,255,255,0.08)',
-              boxShadow: '0 8px 32px rgba(0,0,0,0.7), inset 0 1px 0 rgba(255,255,255,0.05)',
-              backdropFilter: 'blur(24px)',
+              borderTopLeftRadius: 28,
+              borderTopRightRadius: 28,
+              borderBottomLeftRadius: 0,
+              borderBottomRightRadius: 0,
+              background:
+                'linear-gradient(180deg, rgba(22,22,22,0.96) 0%, rgba(10,10,10,0.98) 100%)',
+              borderTop: '1px solid rgba(255,255,255,0.06)',
+              borderLeft: '1px solid rgba(255,255,255,0.06)',
+              borderRight: '1px solid rgba(255,255,255,0.06)',
+              boxShadow:
+                '0 -10px 30px rgba(0,0,0,0.55), inset 0 1px 0 rgba(255,255,255,0.05)',
+              backdropFilter: 'blur(28px)',
+              WebkitBackdropFilter: 'blur(28px)',
+              paddingBottom: 'env(safe-area-inset-bottom, 0px)',
             }}
           >
+            {/* Glowing accent rule — top edge highlight */}
+            <div
+              aria-hidden
+              className="absolute top-0 left-0 right-0 h-px pointer-events-none"
+              style={{
+                background:
+                  'linear-gradient(90deg, transparent 0%, rgba(245,197,66,0.35) 50%, transparent 100%)',
+              }}
+            />
+
             {/* Invite */}
             <button
               onClick={() => setInviteOpen(true)}
-              className="group flex-1 flex flex-col items-center py-4 gap-1.5 active:opacity-70 transition-opacity"
+              className="group flex-1 flex flex-col items-center pt-4 pb-5 gap-1.5 transition-all active:scale-95"
             >
-              <Rocket
-                className="text-white/40 group-hover:text-white/70 transition-colors"
-                style={{ width: 20, height: 20, strokeWidth: 1.6 }}
-              />
-              <span className="text-[9px] font-semibold text-white/30 tracking-[0.12em] uppercase group-hover:text-white/50 transition-colors">
-                Invite
+              <MdGroups style={{ width: 24, height: 24, color: '#4FC3F7' }} />
+              <span className="text-[9px] font-bold text-white/45 tracking-[0.14em] uppercase">
+                {tText('Invite')}
               </span>
             </button>
 
-            {/* Divider */}
-            <div className="w-px h-8 bg-white/5 flex-shrink-0" />
-
-            {/* Withdraw — center primary action */}
+            {/* Withdraw — elevated primary action */}
             <button
               onClick={() => setWithdrawPopupOpen(true)}
-              className="group flex-[1.4] flex flex-col items-center py-3 gap-1.5 active:opacity-80 transition-opacity relative"
+              className="group flex-[1.3] flex flex-col items-center pt-3 pb-5 gap-1.5 transition-all active:scale-95 relative"
             >
               <div
-                className="flex items-center justify-center rounded-2xl px-5 py-2.5 gap-2"
+                className="flex items-center justify-center rounded-2xl px-5 py-2.5 gap-1.5 transition-all group-hover:brightness-110"
                 style={{
-                  background: 'linear-gradient(135deg, #F5C542 0%, #d4920a 100%)',
-                  boxShadow: '0 0 18px rgba(245,197,66,0.35), inset 0 1px 0 rgba(255,255,255,0.2)',
+                  background:
+                    'linear-gradient(135deg, #FFD970 0%, #F5C542 45%, #d4920a 100%)',
+                  boxShadow:
+                    '0 6px 20px rgba(245,197,66,0.45), 0 2px 6px rgba(212,146,10,0.4), inset 0 1px 0 rgba(255,255,255,0.35), inset 0 -1px 0 rgba(0,0,0,0.15)',
                 }}
               >
-                <span className="text-black text-[11px] font-black tracking-[0.1em] uppercase">Withdraw</span>
+                <Banknote className="w-4 h-4 text-black/85" strokeWidth={2.5} />
+                <span className="text-black text-[11px] font-black tracking-[0.12em] uppercase">
+                  {tText('Withdraw')}
+                </span>
               </div>
             </button>
-
-            {/* Divider */}
-            <div className="w-px h-8 bg-white/5 flex-shrink-0" />
 
             {/* Menu */}
             <button
               onClick={() => setMenuOpen(true)}
-              className="group flex-1 flex flex-col items-center py-4 gap-1.5 active:opacity-70 transition-opacity"
+              className="group flex-1 flex flex-col items-center pt-4 pb-5 gap-1.5 transition-all active:scale-95"
             >
-              <Settings
-                className="text-white/40 group-hover:text-white/70 transition-colors"
-                style={{ width: 20, height: 20, strokeWidth: 1.6 }}
-              />
-              <span className="text-[9px] font-semibold text-white/30 tracking-[0.12em] uppercase group-hover:text-white/50 transition-colors">
-                Menu
+              <Settings style={{ width: 24, height: 24, color: '#FFD54F', strokeWidth: 2 }} />
+              <span className="text-[9px] font-bold text-white/45 tracking-[0.14em] uppercase">
+                {tText('Menu')}
               </span>
             </button>
           </div>
