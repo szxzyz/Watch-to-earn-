@@ -37,7 +37,7 @@ export const users = pgTable("users", {
   lastName: text("last_name"),
   profileImageUrl: text("profile_image_url"),
   personalCode: text("personal_code"),
-  balance: decimal("balance", { precision: 30, scale: 8 }).default("0"), // SAT balance with 8 decimals
+  balance: decimal("balance", { precision: 20, scale: 0 }).default("0"), // AXN stored as BIGINT
   tonBalance: decimal("ton_balance", { precision: 30, scale: 10 }).default("0"),
   tonAppBalance: decimal("ton_app_balance", { precision: 30, scale: 10 }).default("0"),
   adsWatched: integer("ads_watched").default(0),
@@ -114,12 +114,6 @@ export const users = pgTable("users", {
   referralMiningBoost: decimal("referral_mining_boost", { precision: 20, scale: 8 }).default("0"), // Extra mining rate from active referrals (0.1/h per active friend)
   activePlanId: varchar("active_plan_id"),
   planExpiresAt: timestamp("plan_expires_at"),
-  // Time-based mining session fields
-  miningMinutesAvailable: integer("mining_minutes_available").default(30),
-  miningStartedAt: timestamp("mining_started_at"),
-  miningEndsAt: timestamp("mining_ends_at"),
-  miningLastTickAt: timestamp("mining_last_tick_at"),
-  dailyEarningsDate: timestamp("daily_earnings_date"),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 });
