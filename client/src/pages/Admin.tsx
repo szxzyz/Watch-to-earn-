@@ -979,7 +979,6 @@ function SettingsSection() {
     ad_section1_limit: "250",
     ad_section2_reward: "0.0001",
     ad_section2_limit: "250",
-    ad_section2_minutes_reward: "5",
     affiliateCommission: "10",
     referralBoostPerInvite: "0.02",
     referralRewardEnabled: false,
@@ -998,7 +997,6 @@ function SettingsSection() {
         ad_section1_limit: settingsData.ad_section1_limit?.toString() || "250",
         ad_section2_reward: settingsData.ad_section2_reward?.toString() || "0.0001",
         ad_section2_limit: settingsData.ad_section2_limit?.toString() || "250",
-        ad_section2_minutes_reward: settingsData.ad_section2_minutes_reward?.toString() || "5",
         affiliateCommission: settingsData.affiliateCommission?.toString() || "10",
         referralBoostPerInvite: settingsData.referralBoostPerInvite?.toString() || "0.02",
         referralRewardEnabled: settingsData.referralRewardEnabled || false,
@@ -1020,7 +1018,6 @@ function SettingsSection() {
         ad_section1_limit: parseInt(s.ad_section1_limit),
         ad_section2_reward: s.ad_section2_reward,
         ad_section2_limit: parseInt(s.ad_section2_limit),
-        ad_section2_minutes_reward: parseInt(s.ad_section2_minutes_reward) || 5,
         affiliateCommission: parseFloat(s.affiliateCommission),
         referralBoostPerInvite: parseFloat(s.referralBoostPerInvite),
         referralRewardEnabled: Boolean(s.referralRewardEnabled),
@@ -1151,9 +1148,9 @@ function SettingsSection() {
             </SettField>
           </div>
           <div className="border-t border-white/5 pt-3 space-y-1">
-            <p className="text-[10px] font-semibold text-indigo-400 uppercase tracking-wide">Section 2 (Mining Time)</p>
-            <SettField label="Mining Time Per Ad (Minutes)" hint="Minutes of mining time credited per Section 2 ad (1-60)">
-              <Input type="number" min="1" max="60" step="1" value={s.ad_section2_minutes_reward} onChange={e => setS({ ...s, ad_section2_minutes_reward: e.target.value })} className="h-8 text-xs bg-[#0a0a0a] border-white/10" />
+            <p className="text-[10px] font-semibold text-indigo-400 uppercase tracking-wide">Section 2</p>
+            <SettField label="Mining Boost Per Ad (SAT/h)" hint="SAT/h added to mining rate per Section 2 ad watched">
+              <Input type="number" step="0.0001" value={s.ad_section2_reward} onChange={e => setS({ ...s, ad_section2_reward: e.target.value })} className="h-8 text-xs bg-[#0a0a0a] border-white/10" />
             </SettField>
             <SettField label="Daily Limit" hint="Max Section 2 ads per user per day">
               <Input type="number" value={s.ad_section2_limit} onChange={e => setS({ ...s, ad_section2_limit: e.target.value })} className="h-8 text-xs bg-[#0a0a0a] border-white/10" />

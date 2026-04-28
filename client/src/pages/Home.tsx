@@ -10,8 +10,9 @@ import { useLocation } from "wouter";
 import { SettingsPopup } from "@/components/SettingsPopup";
 import InvitePopup from "@/components/InvitePopup";
 import { useLanguage } from "@/hooks/useLanguage";
+import { MatrixMiningCounter } from "@/components/MatrixMiningCounter";
 import Header from "@/components/Header";
-import { Award, Wallet, RefreshCw, Flame, Ticket, Info, User as UserIcon, Clock, Loader2, Gift, Rocket, X, Bug, DollarSign, Coins, Send, Users, Check, ExternalLink, Plus, CalendarCheck, Bell, Star, Play, Zap, Settings, Film, Tv, ClipboardList as TaskIcon, UserPlus, Share2, Copy, LogOut, Download, ShieldCheck, Banknote, Bitcoin, Gauge, Square, Fan } from "lucide-react";
+import { Award, Wallet, RefreshCw, Flame, Ticket, Info, User as UserIcon, Clock, Loader2, Gift, Rocket, X, Bug, DollarSign, Coins, Send, Users, Check, ExternalLink, Plus, CalendarCheck, Bell, Star, Play, Zap, Settings, Film, Tv, ClipboardList as TaskIcon, UserPlus, Share2, Copy, LogOut, Download, ShieldCheck, Banknote } from "lucide-react";
 import { DiamondIcon } from "@/components/DiamondIcon";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -179,75 +180,47 @@ export default function Home() {
   const { data: miningState, isLoading: isLoadingMining, refetch: refetchMiningState } = useQuery<any>({
     queryKey: ['/api/mining/state'],
     retry: false,
-    staleTime: 0,
-    // Poll faster while mining is active so the live balance + timer stay accurate
-    refetchInterval: (query: any) => (query?.state?.data?.isActive ? 5000 : 15000),
+    staleTime: 10000,
+    refetchInterval: 30000,
   });
 
   const miningStateData = miningState || {};
+  const [miningAmount, setMiningAmount] = useState(0);
   const activeBoosts = miningStateData.boosts || [];
-
-  const miningRate = parseFloat(miningStateData.rawMiningRate || "0");
+  
+  const miningRate = parseFloat(miningStateData.rawMiningRate || "0.00001");
   const miningRatePerHour = miningRate * 3600;
-  const isMining = !!miningStateData.isActive;
-  const minutesAvailable: number = Number(miningStateData.minutesAvailable ?? 0);
-  const serverSecondsRemaining: number = Number(miningStateData.secondsRemaining ?? 0);
 
-  // Live local countdown (decrements between server polls)
-  const [secondsRemaining, setSecondsRemaining] = useState<number>(serverSecondsRemaining);
-  useEffect(() => { setSecondsRemaining(serverSecondsRemaining); }, [serverSecondsRemaining]);
   useEffect(() => {
-    if (!isMining) return;
-    const id = setInterval(() => {
-      setSecondsRemaining((prev) => Math.max(0, prev - 1));
-    }, 1000);
-    return () => clearInterval(id);
-  }, [isMining]);
-
-  // Live local balance (increments between server polls so UI feels instant)
-  const serverBalance: number = parseFloat(miningStateData.balance || (user as User)?.balance || "0");
-  const serverTodayEarnings: number = parseFloat(miningStateData.todayEarnings || "0");
-  const [liveBalance, setLiveBalance] = useState<number>(serverBalance);
-  const [liveTodayEarnings, setLiveTodayEarnings] = useState<number>(serverTodayEarnings);
-  useEffect(() => { setLiveBalance(serverBalance); }, [serverBalance]);
-  useEffect(() => { setLiveTodayEarnings(serverTodayEarnings); }, [serverTodayEarnings]);
-  useEffect(() => {
-    if (!isMining || miningRate <= 0) return;
-    const id = setInterval(() => {
-      setLiveBalance((b) => b + miningRate);
-      setLiveTodayEarnings((t) => t + miningRate);
-    }, 1000);
-    return () => clearInterval(id);
-  }, [isMining, miningRate]);
-
-  // Per-session mined amount (resets every time mining starts)
-  const [sessionEarned, setSessionEarned] = useState<number>(0);
-  const prevIsMiningRef = useRef<boolean>(isMining);
-  useEffect(() => {
-    if (isMining && !prevIsMiningRef.current) {
-      // Mining just started — reset the session counter
-      setSessionEarned(0);
+    if (miningStateData.currentMining) {
+      setMiningAmount(parseFloat(miningStateData.currentMining));
     }
-    prevIsMiningRef.current = isMining;
-  }, [isMining]);
+  }, [miningStateData.currentMining]);
+
+  // Mining Pause: check if user was inactive for 48+ hours
   useEffect(() => {
-    if (!isMining || miningRate <= 0) return;
-    const id = setInterval(() => {
-      setSessionEarned((s) => s + miningRate);
+    try {
+      const FORTY_EIGHT_HOURS = 48 * 60 * 60 * 1000;
+      const lastActive = localStorage.getItem('mining_last_active');
+      if (lastActive) {
+        const elapsed = Date.now() - parseInt(lastActive, 10);
+        if (elapsed > FORTY_EIGHT_HOURS) {
+          setIsMiningPaused(true);
+          return;
+        }
+      }
+      localStorage.setItem('mining_last_active', String(Date.now()));
+    } catch {}
+  }, []);
+
+  useEffect(() => {
+    if (isMiningPaused) return;
+    const interval = setInterval(() => {
+      setMiningAmount(prev => prev + miningRate);
     }, 1000);
-    return () => clearInterval(id);
-  }, [isMining, miningRate]);
+    return () => clearInterval(interval);
+  }, [miningRate, isMiningPaused]);
 
-  // SAT → BTC formatter (1 BTC = 100,000,000 SAT)
-  // Uses 12 decimals so live mining ticks are visible even at low hashrates
-  // (base rate of 0.00001 SAT/sec ≈ 1e-13 BTC/sec, so 8 decimals would always show 0)
-  const formatBTC = (sats: number) => {
-    const btc = sats / 1e8;
-    if (btc >= 1) return btc.toFixed(8);
-    return btc.toFixed(12);
-  };
-
-  // Boost remaining-time tick (legacy)
   useEffect(() => {
     const timer = setInterval(() => {
       queryClient.setQueryData(['/api/mining/state'], (old: any) => {
@@ -264,12 +237,6 @@ export default function Home() {
     return () => clearInterval(timer);
   }, [queryClient]);
 
-  const formatCountdown = (s: number) => {
-    const m = Math.floor(s / 60);
-    const sec = s % 60;
-    return `${String(m).padStart(2, '0')}:${String(sec).padStart(2, '0')}`;
-  };
-
   const formatRemainingTime = (seconds: number) => {
     if (seconds <= 0) return "Expired";
     const days = Math.floor(seconds / (24 * 3600));
@@ -281,42 +248,30 @@ export default function Home() {
     return `${hours}h ${minutes}m ${secs}s`;
   };
 
-  const startMiningMutation = useMutation({
-    mutationFn: async (minutes?: number) => {
-      const response = await apiRequest("POST", "/api/mining/start", minutes ? { minutes } : {});
-      const data = await response.json();
-      if (!response.ok || !data.success) {
-        throw new Error(data.message || 'Failed to start mining');
+  const claimMiningMutation = useMutation({
+    mutationFn: async () => {
+      // Sync with server first to get accurate amount
+      await refetchMiningState();
+      const response = await apiRequest("POST", "/api/mining/claim");
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.message || 'Failed to claim mining');
       }
-      return data;
+      return response.json();
     },
     onSuccess: (data) => {
-      queryClient.invalidateQueries({ queryKey: ["/api/mining/state"] });
       queryClient.invalidateQueries({ queryKey: ["/api/auth/user"] });
-      showNotification(`Mining started for ${data.minutesUsed} minutes`, "success");
+      queryClient.invalidateQueries({ queryKey: ["/api/mining/state"] });
+      const claimed = Math.floor(parseFloat(data.amount || "0"));
+      showNotification(`+${claimed.toLocaleString()} SAT claimed from mining!`, "success");
     },
     onError: (error: any) => {
-      showNotification(error.message || 'Could not start mining', "error");
+      showNotification(error.message, "error");
     },
   });
 
-  const grantMinutesMutation = useMutation({
-    mutationFn: async (minutes: number) => {
-      const response = await apiRequest("POST", "/api/mining/grant-minutes", { minutes });
-      const data = await response.json();
-      if (!response.ok || !data.success) {
-        throw new Error(data.message || 'Failed to grant minutes');
-      }
-      return data;
-    },
-    onSuccess: (data) => {
-      queryClient.invalidateQueries({ queryKey: ["/api/mining/state"] });
-      showNotification(`+${data.minutesAdded} mining minutes added`, "success");
-    },
-    onError: (error: any) => {
-      showNotification(error.message || 'Could not add minutes', "error");
-    },
-  });
+  const minMiningClaim = 1;
+  const canClaimMining = miningState && parseFloat(miningState.currentMining || "0") >= minMiningClaim;
 
   // Render mining section (need to find where it is in the file)
 
@@ -1255,26 +1210,19 @@ export default function Home() {
 
   const userRank = leaderboardData?.userEarnerRank?.rank;
 
-  const handleStartMining = () => {
-    if (startMiningMutation.isPending) return;
-    if (miningRate <= 0) {
-      showNotification("You need mining power. Boost your hashrate first.", "error");
+  // Values are now derived from miningState above
+
+  const handleClaimClick = () => {
+    if (miningAmount < 1) {
+      showNotification("Minimum claim is 1 SAT", "error");
       return;
     }
-    if (minutesAvailable <= 0) {
-      showNotification("You have no minutes. Tap +5 min to collect.", "error");
-      return;
-    }
-    startMiningMutation.mutate(undefined);
+    claimMiningMutation.mutate();
   };
 
   return (
     <Layout>
-      <Header
-        ref={headerRef}
-        onMenuClick={() => setMenuOpen(true)}
-        onInviteClick={() => setInviteOpen(true)}
-      />
+      <Header ref={headerRef} />
 
       {/* Mining Paused Banner */}
       <AnimatePresence>
@@ -1301,116 +1249,76 @@ export default function Home() {
       </AnimatePresence>
 
       <main className="max-w-md mx-auto px-4 pb-24" style={{ paddingTop: headerHeight + 8 }}>
-        {/* Balance Card — original style with real Bitcoin image */}
-        <div className="bg-[#1A1C20] border border-[#2F3238]/50 p-6 rounded-[20px] mb-4 text-center shadow-xl">
-          <div className="text-[#B0B3B8] text-xs font-medium mb-2 uppercase tracking-wider">Available Balance</div>
-          <div className="text-3xl font-bold text-white mb-2 flex items-center justify-center gap-2 tabular-nums" data-testid="text-user-balance">
-            <img
-              src="/btc-icon.jpg"
-              alt="Bitcoin"
-              className="w-7 h-7 rounded-full object-cover"
-            />
-            {formatBTC(liveBalance)}
-            <span className="text-[#F5C542]">BTC</span>
-          </div>
-          <div className="text-sm text-[#B0B3B8] flex items-center justify-center gap-1">
-            Bitcoin (BTC)
-          </div>
-        </div>
+        {/* Balance & Stats Section */}
+        <div className="mb-4 relative">
 
-        {/* Mining Section */}
-        <div className="mb-4">
-          <p className="text-center text-[10px] font-black uppercase tracking-[0.15em] text-white/30 mb-2">Total mined reward</p>
+          <div className="w-full">
+              {/* MINING POWER — Title outside section */}
+              <p className="text-center text-[10px] font-black uppercase tracking-[0.15em] text-white/30 mb-2">Mining Power</p>
 
-          <div className="bg-[#111] rounded-2xl p-4 border border-[#2a2a2a]">
-            <div className="flex items-stretch justify-between gap-4">
-              {/* Left — Slots (cooler / fan icon) */}
-              <div className="flex items-center gap-3 min-w-0 flex-1">
-                <Fan
-                  className={`w-7 h-7 text-[#4cd3ff] flex-shrink-0 ${isMining ? 'animate-spin' : ''}`}
-                  style={isMining ? { animationDuration: '2.5s' } : {}}
-                  strokeWidth={2}
-                />
-                <div className="min-w-0">
-                  <p className="text-white text-[15px] font-black tabular-nums leading-none">
-                    {isMining ? '1' : '0'}<span className="text-white/40">/1</span>
-                  </p>
-                  <p className="text-white/40 text-[10px] font-bold uppercase tracking-wider mt-1.5">Active Slots</p>
+              <div className="bg-[#111] rounded-2xl p-4 border border-[#2a2a2a] mb-6">
+                <div className="flex justify-between items-center mb-4">
+                  <button
+                    onClick={toggleBalanceFormat}
+                    className="flex items-center gap-1 px-2 py-0.5 rounded-full border transition-all active:scale-95"
+                    style={{
+                      background: balanceFormat === 'BTC' ? 'rgba(245,197,66,0.12)' : 'rgba(255,255,255,0.06)',
+                      borderColor: balanceFormat === 'BTC' ? 'rgba(245,197,66,0.4)' : 'rgba(255,255,255,0.12)',
+                    }}
+                  >
+                    <span
+                      className="text-[9px] font-black uppercase tracking-widest"
+                      style={{ color: balanceFormat === 'SAT' ? '#ffffff' : 'rgba(255,255,255,0.4)' }}
+                    >SAT</span>
+                    <span className="text-[9px] text-white/20 font-black">/</span>
+                    <span
+                      className="text-[9px] font-black uppercase tracking-widest"
+                      style={{ color: balanceFormat === 'BTC' ? '#F5C542' : 'rgba(255,255,255,0.4)' }}
+                    >BTC</span>
+                  </button>
+                  <div className="flex items-center gap-1">
+                    <span className="text-white text-sm font-black tabular-nums">{formatHashrate(miningRatePerHour)}</span>
+                  </div>
+                </div>
+
+                <div className="mb-1">
+                  <MatrixMiningCounter miningAmount={miningAmount} miningRate={miningRate} balanceFormat={balanceFormat} />
+                </div>
+
+                <div className="pt-4 border-t border-white/5">
+                  <button
+                    onClick={handleClaimClick}
+                    disabled={claimMiningMutation.isPending || !canClaimMining}
+                    className="w-full h-11 rounded-xl flex items-center justify-center gap-2 font-black text-xs uppercase tracking-widest transition-all active:scale-[0.98] disabled:opacity-40 disabled:cursor-not-allowed"
+                    style={canClaimMining && !claimMiningMutation.isPending ? {
+                      background: 'linear-gradient(135deg, #F5C542 0%, #d4920a 100%)',
+                      boxShadow: '0 0 16px rgba(245,197,66,0.3)',
+                      color: '#000',
+                    } : {
+                      background: 'rgba(255,255,255,0.06)',
+                      border: '1px solid rgba(255,255,255,0.08)',
+                      color: 'rgba(255,255,255,0.3)',
+                    }}
+                  >
+                    {claimMiningMutation.isPending ? (
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                    ) : (
+                      <span>Claim</span>
+                    )}
+                  </button>
                 </div>
               </div>
 
-              {/* Right — Speed + this session's mined BTC */}
-              <div className="flex items-center gap-3 min-w-0 flex-1 justify-end">
-                <div className="text-right min-w-0">
-                  <p className="text-white text-[15px] font-black tabular-nums leading-none">
-                    {formatHashrate(miningRatePerHour)}
-                  </p>
-                  <p className="text-[#F5C542] text-[11px] font-black tabular-nums mt-1.5 leading-none">
-                    {formatBTC(sessionEarned)}
-                    <span className="text-white/40 ml-1">BTC</span>
-                  </p>
+              {/* WATCH ADS TO BOOST MINING — Title outside section */}
+              <p className="text-center text-[10px] font-black uppercase tracking-[0.12em] text-white/30 mb-2">Watch Ads to Boost Mining</p>
+
+              <div className="mb-6">
+                <div className="grid grid-cols-2 gap-3">
+                  <AdWatchingSection user={user as User} section="section1" />
+                  <AdWatchingSection user={user as User} section="section2" />
                 </div>
-                <Zap className="w-7 h-7 text-[#4cd3ff] fill-[#4cd3ff] flex-shrink-0" strokeWidth={2} />
               </div>
-            </div>
 
-            {/* Timer / Start button row */}
-            <div className="pt-4 mt-4 border-t border-white/5">
-              {isMining ? (
-                <div className="space-y-2">
-                  <div className="flex items-center justify-between">
-                    <span className="text-white/60 text-[11px] font-bold uppercase tracking-wider">Mining</span>
-                    <span className="text-emerald-400 text-base font-black tabular-nums">
-                      {formatCountdown(secondsRemaining)}
-                    </span>
-                  </div>
-                  <div className="w-full h-1.5 rounded-full bg-white/5 overflow-hidden">
-                    <div
-                      className="h-full rounded-full"
-                      style={{
-                        width: `${miningStateData.sessionTotalSeconds ? Math.max(0, Math.min(100, (1 - secondsRemaining / miningStateData.sessionTotalSeconds) * 100)) : 0}%`,
-                        background: 'linear-gradient(90deg, #34d399 0%, #F5C542 100%)',
-                        transition: 'width 1s linear',
-                      }}
-                    />
-                  </div>
-                </div>
-              ) : (
-                <button
-                  onClick={handleStartMining}
-                  disabled={startMiningMutation.isPending || miningRate <= 0 || minutesAvailable <= 0}
-                  className="w-full h-11 rounded-xl flex items-center justify-center gap-2 font-black text-xs uppercase tracking-widest transition-all active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed"
-                  style={(!startMiningMutation.isPending && miningRate > 0 && minutesAvailable > 0) ? {
-                    background: 'linear-gradient(135deg, #F5C542 0%, #d4920a 100%)',
-                    boxShadow: '0 0 16px rgba(245,197,66,0.3)',
-                    color: '#000',
-                  } : {
-                    background: 'rgba(255,255,255,0.06)',
-                    border: '1px solid rgba(255,255,255,0.08)',
-                    color: 'rgba(255,255,255,0.3)',
-                  }}
-                >
-                  {startMiningMutation.isPending ? (
-                    <Loader2 className="w-4 h-4 animate-spin" />
-                  ) : (
-                    <>
-                      <Play className="w-4 h-4 fill-current" />
-                      <span>Start Mining</span>
-                    </>
-                  )}
-                </button>
-              )}
-            </div>
-          </div>
-        </div>
-
-        {/* WATCH ADS TO BOOST MINING — Title outside section */}
-        <p className="text-center text-[10px] font-black uppercase tracking-[0.12em] text-white/30 mb-2">Watch Ads to Boost Mining</p>
-
-        <div className="mb-6">
-          <div className="grid grid-cols-2 gap-3">
-            <AdWatchingSection user={user as User} section="section1" />
-            <AdWatchingSection user={user as User} section="section2" />
           </div>
         </div>
 
@@ -1596,7 +1504,7 @@ export default function Home() {
           <div className="absolute bottom-0 left-1/2 -translate-x-1/2 w-64 h-20 bg-[#F5C542]/8 blur-3xl rounded-full pointer-events-none" />
 
           <div
-            className="relative flex items-center justify-center rounded-[28px] overflow-hidden"
+            className="relative flex items-center rounded-[28px] overflow-hidden"
             style={{
               background: 'rgba(14,14,14,0.96)',
               border: '1px solid rgba(255,255,255,0.08)',
@@ -1604,20 +1512,54 @@ export default function Home() {
               backdropFilter: 'blur(24px)',
             }}
           >
-            {/* Withdraw — single primary action */}
+            {/* Invite */}
+            <button
+              onClick={() => setInviteOpen(true)}
+              className="group flex-1 flex flex-col items-center py-4 gap-1.5 active:opacity-70 transition-opacity"
+            >
+              <Rocket
+                className="text-white/40 group-hover:text-white/70 transition-colors"
+                style={{ width: 20, height: 20, strokeWidth: 1.6 }}
+              />
+              <span className="text-[9px] font-semibold text-white/30 tracking-[0.12em] uppercase group-hover:text-white/50 transition-colors">
+                Invite
+              </span>
+            </button>
+
+            {/* Divider */}
+            <div className="w-px h-8 bg-white/5 flex-shrink-0" />
+
+            {/* Withdraw — center primary action */}
             <button
               onClick={() => setWithdrawPopupOpen(true)}
-              className="group w-full flex items-center justify-center py-3 active:opacity-80 transition-opacity"
+              className="group flex-[1.4] flex flex-col items-center py-3 gap-1.5 active:opacity-80 transition-opacity relative"
             >
               <div
-                className="flex items-center justify-center rounded-2xl px-8 py-3 gap-2"
+                className="flex items-center justify-center rounded-2xl px-5 py-2.5 gap-2"
                 style={{
                   background: 'linear-gradient(135deg, #F5C542 0%, #d4920a 100%)',
                   boxShadow: '0 0 18px rgba(245,197,66,0.35), inset 0 1px 0 rgba(255,255,255,0.2)',
                 }}
               >
-                <span className="text-black text-[12px] font-black tracking-[0.12em] uppercase">Withdraw</span>
+                <span className="text-black text-[11px] font-black tracking-[0.1em] uppercase">Withdraw</span>
               </div>
+            </button>
+
+            {/* Divider */}
+            <div className="w-px h-8 bg-white/5 flex-shrink-0" />
+
+            {/* Menu */}
+            <button
+              onClick={() => setMenuOpen(true)}
+              className="group flex-1 flex flex-col items-center py-4 gap-1.5 active:opacity-70 transition-opacity"
+            >
+              <Settings
+                className="text-white/40 group-hover:text-white/70 transition-colors"
+                style={{ width: 20, height: 20, strokeWidth: 1.6 }}
+              />
+              <span className="text-[9px] font-semibold text-white/30 tracking-[0.12em] uppercase group-hover:text-white/50 transition-colors">
+                Menu
+              </span>
             </button>
           </div>
         </div>
