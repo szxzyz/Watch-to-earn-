@@ -220,6 +220,33 @@ export default function Home() {
     return () => clearInterval(id);
   }, [isMining, miningRate]);
 
+  // Per-session mined amount (resets every time mining starts)
+  const [sessionEarned, setSessionEarned] = useState<number>(0);
+  const prevIsMiningRef = useRef<boolean>(isMining);
+  useEffect(() => {
+    if (isMining && !prevIsMiningRef.current) {
+      // Mining just started — reset the session counter
+      setSessionEarned(0);
+    }
+    prevIsMiningRef.current = isMining;
+  }, [isMining]);
+  useEffect(() => {
+    if (!isMining || miningRate <= 0) return;
+    const id = setInterval(() => {
+      setSessionEarned((s) => s + miningRate);
+    }, 1000);
+    return () => clearInterval(id);
+  }, [isMining, miningRate]);
+
+  // SAT → BTC formatter (1 BTC = 100,000,000 SAT)
+  // Uses 12 decimals so live mining ticks are visible even at low hashrates
+  // (base rate of 0.00001 SAT/sec ≈ 1e-13 BTC/sec, so 8 decimals would always show 0)
+  const formatBTC = (sats: number) => {
+    const btc = sats / 1e8;
+    if (btc >= 1) return btc.toFixed(8);
+    return btc.toFixed(12);
+  };
+
   // Boost remaining-time tick (legacy)
   useEffect(() => {
     const timer = setInterval(() => {
@@ -1283,13 +1310,11 @@ export default function Home() {
               alt="Bitcoin"
               className="w-7 h-7 rounded-full object-cover"
             />
-            {liveBalance >= 1
-              ? liveBalance.toLocaleString(undefined, { maximumFractionDigits: 4 })
-              : liveBalance.toFixed(8)}
-            <span className="text-[#F5C542]">SAT</span>
+            {formatBTC(liveBalance)}
+            <span className="text-[#F5C542]">BTC</span>
           </div>
           <div className="text-sm text-[#B0B3B8] flex items-center justify-center gap-1">
-            Satoshi (Bitcoin)
+            Bitcoin (BTC)
           </div>
         </div>
 
@@ -1314,17 +1339,15 @@ export default function Home() {
                 </div>
               </div>
 
-              {/* Right — Speed + live BTC mined */}
+              {/* Right — Speed + this session's mined BTC */}
               <div className="flex items-center gap-3 min-w-0 flex-1 justify-end">
                 <div className="text-right min-w-0">
                   <p className="text-white text-[15px] font-black tabular-nums leading-none">
                     {formatHashrate(miningRatePerHour)}
                   </p>
                   <p className="text-[#F5C542] text-[11px] font-black tabular-nums mt-1.5 leading-none">
-                    {liveBalance >= 1
-                      ? liveBalance.toLocaleString(undefined, { maximumFractionDigits: 4 })
-                      : liveBalance.toFixed(8)}
-                    <span className="text-white/40 ml-1">SAT</span>
+                    {formatBTC(sessionEarned)}
+                    <span className="text-white/40 ml-1">BTC</span>
                   </p>
                 </div>
                 <Zap className="w-7 h-7 text-[#4cd3ff] fill-[#4cd3ff] flex-shrink-0" strokeWidth={2} />
