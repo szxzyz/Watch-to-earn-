@@ -183,18 +183,9 @@ export async function ensureDatabaseSchema(): Promise<void> {
       
       // Add referral mining boost column
       await db.execute(sql`ALTER TABLE users ADD COLUMN IF NOT EXISTS referral_mining_boost DECIMAL(20, 8) DEFAULT '0'`);
-
-      // Time-based mining session columns
-      await db.execute(sql`ALTER TABLE users ADD COLUMN IF NOT EXISTS mining_minutes_available INTEGER DEFAULT 30`);
-      await db.execute(sql`ALTER TABLE users ADD COLUMN IF NOT EXISTS mining_started_at TIMESTAMP`);
-      await db.execute(sql`ALTER TABLE users ADD COLUMN IF NOT EXISTS mining_ends_at TIMESTAMP`);
-      await db.execute(sql`ALTER TABLE users ADD COLUMN IF NOT EXISTS mining_last_tick_at TIMESTAMP`);
-      await db.execute(sql`ALTER TABLE users ADD COLUMN IF NOT EXISTS daily_earnings_date TIMESTAMP`);
-      // Backfill: ensure existing users have at least 30 minutes available so they can try the new system
-      await db.execute(sql`UPDATE users SET mining_minutes_available = 30 WHERE mining_minutes_available IS NULL OR mining_minutes_available = 0`);
       
       // Alter existing balance columns to new precision (safely handle existing data)
-      await db.execute(sql`ALTER TABLE users ALTER COLUMN balance TYPE DECIMAL(30, 8) USING balance::decimal`);
+      await db.execute(sql`ALTER TABLE users ALTER COLUMN balance TYPE DECIMAL(20, 0) USING ROUND(balance)`);
       await db.execute(sql`ALTER TABLE users ALTER COLUMN usd_balance TYPE DECIMAL(30, 10)`);
       await db.execute(sql`ALTER TABLE users ALTER COLUMN ton_balance TYPE DECIMAL(30, 10)`);
       await db.execute(sql`ALTER TABLE users ALTER COLUMN pdz_balance TYPE DECIMAL(30, 10)`);

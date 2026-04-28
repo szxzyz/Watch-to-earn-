@@ -521,198 +521,43 @@ export class DatabaseStorage implements IStorage {
     }
   }
 
-  // Compute the user's per-second mining rate from base rate + boosts.
-  private async computeMiningRate(user: any): Promise<{ ratePerSec: number; boosts: any[]; referralBoostHourly: number; }> {
-    const boosts = await this.getMiningBoosts(user.id);
-    const baseRate = 0.00001;
-    const referralBoostHourly = parseFloat(user.referralMiningBoost || "0");
-    const referralBoostPerSec = referralBoostHourly / 3600;
-    const adSection1BoostHourly = parseFloat((user as any).adSection1Boost || "0");
-    const adSection2BoostHourly = parseFloat((user as any).adSection2Boost || "0");
-    const adBoostPerSec = (adSection1BoostHourly + adSection2BoostHourly) / 3600;
-    let ratePerSec = baseRate + referralBoostPerSec + adBoostPerSec;
-    boosts.forEach((b: any) => { ratePerSec += parseFloat(b.miningRate); });
-    return { ratePerSec, boosts, referralBoostHourly };
-  }
-
-  // Returns YYYY-MM-DD in UTC for daily-earnings comparison
-  private dayKey(d: Date): string {
-    return d.toISOString().slice(0, 10);
-  }
-
   async getMiningState(userId: string) {
     const user = await this.getUser(userId);
     if (!user) throw new Error("User not found");
 
     const now = new Date();
-    const { ratePerSec, boosts, referralBoostHourly } = await this.computeMiningRate(user);
-
-    // Determine if a mining session is active
-    const startedAt = (user as any).miningStartedAt ? new Date((user as any).miningStartedAt) : null;
-    const endsAt = (user as any).miningEndsAt ? new Date((user as any).miningEndsAt) : null;
-    const lastTickAt = (user as any).miningLastTickAt ? new Date((user as any).miningLastTickAt) : null;
-
-    let isActive = false;
-    let secondsRemaining = 0;
-    let creditedJustNow = 0;
-
-    if (startedAt && endsAt && lastTickAt) {
-      // If the session window is still open
-      if (now.getTime() < endsAt.getTime()) {
-        isActive = true;
-        secondsRemaining = Math.max(0, Math.ceil((endsAt.getTime() - now.getTime()) / 1000));
-
-        // Credit accumulated reward since last tick
-        const elapsedSec = Math.max(0, (now.getTime() - lastTickAt.getTime()) / 1000);
-        if (elapsedSec >= 1) {
-          const reward = elapsedSec * ratePerSec;
-          if (reward > 0) {
-            await this.creditMiningReward(userId, reward, now, false);
-            creditedJustNow = reward;
-          }
-        }
-      } else {
-        // Session ended — credit final tail and clear session state
-        const tailEndMs = Math.min(now.getTime(), endsAt.getTime());
-        const elapsedSec = Math.max(0, (tailEndMs - lastTickAt.getTime()) / 1000);
-        const reward = elapsedSec * ratePerSec;
-        if (reward > 0) {
-          await this.creditMiningReward(userId, reward, new Date(tailEndMs), true);
-          creditedJustNow = reward;
-        } else {
-          await db.update(users).set({
-            miningStartedAt: null,
-            miningEndsAt: null,
-            miningLastTickAt: null,
-            updatedAt: now,
-          }).where(eq(users.id, userId));
-        }
-        isActive = false;
-        secondsRemaining = 0;
-      }
-    }
-
-    // Re-read user to get the freshest balance / today earnings after potential credit
-    const freshUser = creditedJustNow > 0 ? await this.getUser(userId) : user;
-    const balance = parseFloat((freshUser as any)?.balance || "0");
-
-    // Today earnings handling — reset if stored daily date is not today
-    const dailyDate = (freshUser as any)?.dailyEarningsDate ? new Date((freshUser as any).dailyEarningsDate) : null;
-    let todayEarnings = parseFloat((freshUser as any)?.dailyEarnings || "0");
-    if (!dailyDate || this.dayKey(dailyDate) !== this.dayKey(now)) {
-      todayEarnings = 0;
-    }
-
-    const minutesAvailable = Number((freshUser as any)?.miningMinutesAvailable ?? 0);
-    const sessionTotalSeconds = startedAt && endsAt
-      ? Math.max(0, Math.round((endsAt.getTime() - startedAt.getTime()) / 1000))
-      : 0;
+    const lastClaim = user.lastMiningClaim || user.createdAt || new Date();
+    
+    // Get all active boosts from DB
+    const boosts = await this.getMiningBoosts(userId);
+    
+    // Base rate
+    const baseRate = 0.00001;
+    // Referral boost stored as per-hour value
+    const referralBoostHourly = parseFloat(user.referralMiningBoost || "0");
+    const referralBoostPerSec = referralBoostHourly / 3600;
+    // Ad section boosts (per-hour values stored on user record)
+    const adSection1BoostHourly = parseFloat((user as any).adSection1Boost || "0");
+    const adSection2BoostHourly = parseFloat((user as any).adSection2Boost || "0");
+    const adBoostPerSec = (adSection1BoostHourly + adSection2BoostHourly) / 3600;
+    let totalRate = baseRate + referralBoostPerSec + adBoostPerSec;
+    boosts.forEach(boost => {
+      totalRate += parseFloat(boost.miningRate);
+    });
+    
+    const secondsPassed = Math.floor((now.getTime() - lastClaim.getTime()) / 1000);
+    const currentMining = (secondsPassed * totalRate).toFixed(5);
+    const maxMining = (24 * 60 * 60 * totalRate).toFixed(2);
 
     return {
-      // legacy compat
-      currentMining: "0",
-      miningRate: (ratePerSec * 3600).toFixed(4),
-      lastClaim: (freshUser as any)?.lastMiningClaim || null,
-      maxMining: (24 * 60 * 60 * ratePerSec).toFixed(2),
-      rawMiningRate: ratePerSec,
+      currentMining,
+      miningRate: (totalRate * 3600).toFixed(4),
+      lastClaim,
+      maxMining,
+      rawMiningRate: totalRate,
       referralBoost: referralBoostHourly.toFixed(4),
-      boosts,
-      // new time-based session fields
-      isActive,
-      secondsRemaining,
-      sessionTotalSeconds,
-      minutesAvailable,
-      balance: balance.toFixed(8),
-      todayEarnings: todayEarnings.toFixed(8),
-      ratePerSecond: ratePerSec,
-      hashratePerHour: (ratePerSec * 3600).toFixed(4),
-      miningStartedAt: startedAt,
-      miningEndsAt: endsAt,
-      serverTime: now.toISOString(),
+      boosts
     };
-  }
-
-  // Credit mining reward to user balance / earnings, advancing lastTickAt.
-  // If clearSession=true, also clears the active session timestamps.
-  private async creditMiningReward(
-    userId: string,
-    amount: number,
-    tickAt: Date,
-    clearSession: boolean,
-  ): Promise<void> {
-    if (amount <= 0) return;
-    const user = await this.getUser(userId);
-    if (!user) return;
-
-    const today = this.dayKey(tickAt);
-    const storedDate = (user as any).dailyEarningsDate ? new Date((user as any).dailyEarningsDate) : null;
-    const sameDay = storedDate && this.dayKey(storedDate) === today;
-    const newDailyEarnings = (sameDay ? parseFloat((user as any).dailyEarnings || "0") : 0) + amount;
-
-    const updateData: any = {
-      balance: sql`COALESCE(${users.balance}, 0) + ${amount}`,
-      withdrawBalance: sql`COALESCE(${users.withdrawBalance}, 0) + ${amount}`,
-      totalEarnings: sql`COALESCE(${users.totalEarnings}, 0) + ${amount}`,
-      dailyEarnings: newDailyEarnings.toString(),
-      dailyEarningsDate: tickAt,
-      lastMiningClaim: tickAt,
-      miningLastTickAt: tickAt,
-      updatedAt: tickAt,
-    };
-    if (clearSession) {
-      updateData.miningStartedAt = null;
-      updateData.miningEndsAt = null;
-      updateData.miningLastTickAt = null;
-    }
-
-    await db.update(users).set(updateData).where(eq(users.id, userId));
-  }
-
-  // Start a time-based mining session for `minutes`. Caps at user's available minutes.
-  async startMining(userId: string, requestedMinutes?: number): Promise<{ success: boolean; message: string; minutesUsed?: number; }> {
-    const user = await this.getUser(userId);
-    if (!user) return { success: false, message: "User not found" };
-
-    if ((user as any).miningEndsAt && new Date((user as any).miningEndsAt).getTime() > Date.now()) {
-      return { success: false, message: "Mining is already running" };
-    }
-
-    const available = Number((user as any).miningMinutesAvailable ?? 0);
-    if (available <= 0) {
-      return { success: false, message: "You have no mining minutes. Collect minutes to start mining." };
-    }
-
-    const { ratePerSec } = await this.computeMiningRate(user);
-    if (ratePerSec <= 0) {
-      return { success: false, message: "You have no mining power. Boost your hashrate to start mining." };
-    }
-
-    const minutes = Math.max(1, Math.min(available, Math.floor(requestedMinutes || available)));
-    const now = new Date();
-    const endsAt = new Date(now.getTime() + minutes * 60 * 1000);
-
-    await db.update(users).set({
-      miningStartedAt: now,
-      miningEndsAt: endsAt,
-      miningLastTickAt: now,
-      miningMinutesAvailable: Math.max(0, available - minutes),
-      updatedAt: now,
-    }).where(eq(users.id, userId));
-
-    return { success: true, message: `Mining started for ${minutes} minutes`, minutesUsed: minutes };
-  }
-
-  // Add (or remove with negative value) mining minutes for a user
-  async addMiningMinutes(userId: string, minutes: number): Promise<{ success: boolean; minutesAvailable: number; }> {
-    const user = await this.getUser(userId);
-    if (!user) return { success: false, minutesAvailable: 0 };
-    const current = Number((user as any).miningMinutesAvailable ?? 0);
-    const next = Math.max(0, current + Math.floor(minutes));
-    await db.update(users).set({
-      miningMinutesAvailable: next,
-      updatedAt: new Date(),
-    }).where(eq(users.id, userId));
-    return { success: true, minutesAvailable: next };
   }
 
   // Transaction operations
