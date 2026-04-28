@@ -3,7 +3,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
-import { Play, Clock, Shield, Zap, Loader2 } from "lucide-react";
+import { Play, Clock, Shield, Zap, Loader2, Timer } from "lucide-react";
 import { showNotification } from "@/components/AppNotification";
 import { formatHashrate } from "@/lib/hashrate";
 
@@ -52,8 +52,17 @@ export default function AdWatchingSection({ user, section = 'section1' }: AdWatc
       return response.json();
     },
     onSuccess: async (data) => {
-      const rewardAmount = data?.rewardBoost || (section === 'section1' ? 0.0015 : 0.0001);
-      showNotification(`+${formatHashrate(rewardAmount)} boost earned!`, "success");
+      if (section === 'section2') {
+        const minutes = Number(data?.minutesAdded ?? 0);
+        if (minutes > 0) {
+          showNotification(`+${minutes} mining minute${minutes === 1 ? '' : 's'} added!`, "success");
+        } else {
+          showNotification(`Mining time added!`, "success");
+        }
+      } else {
+        const rewardAmount = data?.rewardBoost || 0.0015;
+        showNotification(`+${formatHashrate(rewardAmount)} boost earned!`, "success");
+      }
       queryClient.invalidateQueries({ queryKey: ["/api/auth/user"] });
       queryClient.invalidateQueries({ queryKey: ["/api/mining/state"] });
     },
@@ -196,17 +205,29 @@ export default function AdWatchingSection({ user, section = 'section1' }: AdWatc
     ? (parseInt(appSettings?.ad_section1_limit || '250')) 
     : (parseInt(appSettings?.ad_section2_limit || '250'));
 
-  const sectionReward = section === 'section1'
+  const sectionRewardHashrate = section === 'section1'
     ? (appSettings?.ad_section1_reward || '0.0015')
     : (appSettings?.ad_section2_reward || '0.0001');
+  const minutesPerAd = parseInt(appSettings?.ad_section2_minutes_reward || '5');
+
+  const isMinutesSection = section === 'section2';
 
   return (
     <div className="bg-[#111] border border-[#2a2a2a] rounded-2xl p-4 flex flex-col gap-3 shadow-[0_4px_20px_rgba(0,0,0,0.4)] relative overflow-hidden group">
       <div className="absolute -inset-1 bg-gradient-to-r from-white/0 via-white/3 to-white/0 opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
 
       <div className="flex-1 min-w-0 relative z-10 flex flex-col items-center text-center gap-1">
-        <span className="text-white text-[15px] font-black tabular-nums leading-none">+{formatHashrate(parseFloat(sectionReward))}</span>
-        <span className="text-[#8E8E93] text-[10px] font-bold uppercase tracking-wider leading-none">24 hours of validity</span>
+        {isMinutesSection ? (
+          <>
+            <span className="text-white text-[15px] font-black tabular-nums leading-none">+{minutesPerAd} Min</span>
+            <span className="text-[#8E8E93] text-[10px] font-bold uppercase tracking-wider leading-none">Mining Time</span>
+          </>
+        ) : (
+          <>
+            <span className="text-white text-[15px] font-black tabular-nums leading-none">+{formatHashrate(parseFloat(sectionRewardHashrate))}</span>
+            <span className="text-[#8E8E93] text-[10px] font-bold uppercase tracking-wider leading-none">24 hours of validity</span>
+          </>
+        )}
       </div>
 
       <Button
