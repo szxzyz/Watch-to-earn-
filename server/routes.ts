@@ -406,6 +406,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         ad_section2_limit: settingsMap['ad_section2_limit'] || '250',
         ad_section1_reward: settingsMap['ad_section1_reward'] || '0.0015',
         ad_section2_reward: settingsMap['ad_section2_reward'] || '0.0001',
+        ad_section2_minutes_reward: settingsMap['ad_section2_minutes_reward'] || '5',
         withdraw_ads_required: settingsMap['withdraw_ads_required'] === 'true',
         referralBoostPerInvite: settingsMap['referral_boost_per_invite'] || '0.01',
       });
@@ -605,23 +606,24 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(429).json({ message: `Daily ad limit reached for this section (${dailyLimit} ads/day)` });
       }
 
-      // Determine which section boost to apply
+      // Determine which section reward to apply
       let boostAmount = 0;
+      let minutesAdded = 0;
       let updateFields: any = {};
-      
-      if (section === 'section1') {
+
+      if (section === 'section2') {
+        // Section 2 grants mining minutes (consumable time) instead of hashrate
+        const minutesStr = await storage.getAppSetting('ad_section2_minutes_reward', '5');
+        minutesAdded = Math.max(1, Math.min(60, parseInt(minutesStr) || 5));
+        updateFields = {
+          adSection2Count: (user.adSection2Count || 0) + 1
+        };
+      } else if (section === 'section1') {
         const rewardStr = await storage.getAppSetting('ad_section1_reward', '0.0015');
         boostAmount = parseFloat(rewardStr);
         updateFields = {
           adSection1Boost: (parseFloat(user.adSection1Boost || "0") + boostAmount).toString(),
           adSection1Count: (user.adSection1Count || 0) + 1
-        };
-      } else if (section === 'section2') {
-        const rewardStr = await storage.getAppSetting('ad_section2_reward', '0.0001');
-        boostAmount = parseFloat(rewardStr);
-        updateFields = {
-          adSection2Boost: (parseFloat(user.adSection2Boost || "0") + boostAmount).toString(),
-          adSection2Count: (user.adSection2Count || 0) + 1
         };
       } else {
         // Legacy or single section fallback
@@ -641,12 +643,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
         })
         .where(eq(users.id, user.id));
 
+      // For section 2 we also credit mining minutes
+      let minutesAvailable: number | undefined;
+      if (section === 'section2' && minutesAdded > 0) {
+        const result = await storage.addMiningMinutes(user.id, minutesAdded);
+        minutesAvailable = result.minutesAvailable;
+      }
+
       const updatedUser = await storage.getUser(user.id);
       res.json({
         success: true,
         newBalance: updatedUser?.balance,
         adsWatchedToday: updatedUser?.adsWatchedToday,
         rewardBoost: boostAmount,
+        minutesAdded,
+        minutesAvailable,
         section: section || 'section1'
       });
     } catch (error) {
@@ -3640,6 +3651,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         ad_section1_limit: getSetting('ad_section1_limit', '250'),
         ad_section2_reward: getSetting('ad_section2_reward', '0.0001'),
         ad_section2_limit: getSetting('ad_section2_limit', '250'),
+        ad_section2_minutes_reward: getSetting('ad_section2_minutes_reward', '5'),
         withdrawalPackages: JSON.parse(getSetting('withdrawal_packages', '[{"usd":0.2,"bug":2000},{"usd":0.4,"bug":4000},{"usd":0.8,"bug":8000}]')),
       });
     } catch (error) {
@@ -3708,6 +3720,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         ad_section1_limit: 'ad_section1_limit',
         ad_section2_reward: 'ad_section2_reward',
         ad_section2_limit: 'ad_section2_limit',
+        ad_section2_minutes_reward: 'ad_section2_minutes_reward',
         withdraw_ads_required: 'withdraw_ads_required'
       };
 
@@ -3792,6 +3805,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         ad_section1_limit: 'ad_section1_limit',
         ad_section2_reward: 'ad_section2_reward',
         ad_section2_limit: 'ad_section2_limit',
+        ad_section2_minutes_reward: 'ad_section2_minutes_reward',
         withdraw_ads_required: 'withdraw_ads_required'
       };
 
