@@ -3,7 +3,8 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
-import { Play, Clock, Shield, Zap, Loader2 } from "lucide-react";
+import { Tv, Clock, Shield, Zap, Loader2 } from "lucide-react";
+import { MdOndemandVideo } from "react-icons/md";
 import { showNotification } from "@/components/AppNotification";
 import { formatHashrate } from "@/lib/hashrate";
 
@@ -73,7 +74,7 @@ export default function AdWatchingSection({ user, section = 'section1' }: AdWatc
     },
   });
 
-  const showMonetagAd = (): Promise<{ success: boolean; watchedFully: boolean; unavailable: boolean }> => {
+  const showMonetagAd = (): Promise<{ success: boolean; unavailable: boolean }> => {
     return new Promise((resolve) => {
       const showFn = typeof window.show_9368336 === 'function'
         ? window.show_9368336
@@ -81,21 +82,17 @@ export default function AdWatchingSection({ user, section = 'section1' }: AdWatc
         ? window.show_10401872
         : null;
       if (showFn) {
-        monetagStartTimeRef.current = Date.now();
         showFn()
           .then(() => {
-            const watchDuration = Date.now() - monetagStartTimeRef.current;
-            const watchedAtLeast3Seconds = watchDuration >= 3000;
-            resolve({ success: true, watchedFully: watchedAtLeast3Seconds, unavailable: false });
+            // Ad network's promise resolves when the ad was watched successfully (or rewarded)
+            resolve({ success: true, unavailable: false });
           })
           .catch((error) => {
             console.error('Monetag ad error:', error);
-            const watchDuration = Date.now() - monetagStartTimeRef.current;
-            const watchedAtLeast3Seconds = watchDuration >= 3000;
-            resolve({ success: false, watchedFully: watchedAtLeast3Seconds, unavailable: false });
+            resolve({ success: false, unavailable: false });
           });
       } else {
-        resolve({ success: false, watchedFully: false, unavailable: true });
+        resolve({ success: false, unavailable: true });
       }
     });
   };
@@ -138,19 +135,13 @@ export default function AdWatchingSection({ user, section = 'section1' }: AdWatc
     sessionRewardedRef.current = false;
     
     try {
-      // BOTH SECTIONS: Monetag
       setCurrentAdStep('monetag');
       let monetagResult;
       try {
         monetagResult = await showMonetagAd();
       } catch (e) {
         console.error('Monetag fatal error:', e);
-        monetagResult = { success: false, watchedFully: false, unavailable: false };
-      }
-
-      if (!monetagResult.success && !monetagResult.watchedFully) {
-        setCurrentAdStep('idle');
-        setIsShowingAds(false);
+        monetagResult = { success: false, unavailable: false };
       }
 
       if (monetagResult.unavailable) {
@@ -160,17 +151,14 @@ export default function AdWatchingSection({ user, section = 'section1' }: AdWatc
         return;
       }
 
-      if (!monetagResult.watchedFully) {
-        showNotification("Claimed too fast!", "error");
-        return;
-      }
-
+      // If the ad SDK rejected (genuinely failed/cancelled), exit silently — no fake error.
       if (!monetagResult.success) {
-        showNotification("Ad failed. Please try again.", "error");
+        setIsShowingAds(false);
+        setCurrentAdStep('idle');
         return;
       }
 
-      // Grant reward after ad completes
+      // Ad completed → grant reward immediately
       setCurrentAdStep('verifying');
       
       if (!sessionRewardedRef.current) {
@@ -205,8 +193,8 @@ export default function AdWatchingSection({ user, section = 'section1' }: AdWatc
       <div className="absolute -inset-1 bg-gradient-to-r from-white/0 via-white/3 to-white/0 opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
 
       <div className="flex-1 min-w-0 relative z-10 flex flex-col items-center text-center gap-1">
-        <span className="text-white text-[15px] font-black tabular-nums leading-none">+{formatHashrate(parseFloat(sectionReward))}</span>
-        <span className="text-[#8E8E93] text-[10px] font-bold uppercase tracking-wider leading-none">24 hours of validity</span>
+        <span className="text-white text-[12px] font-black tabular-nums leading-none">+{formatHashrate(parseFloat(sectionReward))}</span>
+        <span className="text-[#8E8E93] text-[9px] font-bold uppercase tracking-wider leading-none">24 hours of validity</span>
       </div>
 
       <Button
@@ -221,7 +209,7 @@ export default function AdWatchingSection({ user, section = 'section1' }: AdWatc
           </div>
         ) : (
           <span className="flex items-center gap-1.5">
-            <Play className="w-3 h-3 fill-current" />
+            <MdOndemandVideo className="w-3.5 h-3.5" />
             {adsWatchedToday}/{dailyLimit}
           </span>
         )}
