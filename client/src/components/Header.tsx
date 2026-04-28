@@ -112,17 +112,11 @@ const Header = forwardRef<HTMLDivElement>((_, ref) => {
                 <div className="w-10 h-1 rounded-full bg-white/20" />
               </div>
 
-              <div className="flex items-center justify-between px-5 py-3 border-b border-[#1a1a1a]">
+              <div className="flex items-center justify-center px-5 py-3 border-b border-[#1a1a1a]">
                 <span className="text-white font-black text-sm uppercase tracking-wide">Select Language</span>
-                <button
-                  onClick={() => setLangPickerOpen(false)}
-                  className="w-7 h-7 rounded-lg bg-white/8 flex items-center justify-center text-white/50 hover:text-white transition-colors"
-                >
-                  <X className="w-4 h-4" />
-                </button>
               </div>
 
-              <div className="max-h-[60vh] overflow-y-auto py-1.5">
+              <div className="max-h-[60vh] overflow-y-auto py-1.5" data-no-translate>
                 {SUPPORTED_LANGUAGES.map((lang) => (
                   <button
                     key={lang.code}
