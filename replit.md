@@ -20,7 +20,8 @@ CashWatch is a Telegram-based earning platform where users mine Satoshi (SAT) by
 ### Technical Implementations
 - **Stack**: React, TypeScript, Vite (frontend); Express.js, Node.js (backend); PostgreSQL with Drizzle ORM (database).
 - **Authentication**: Telegram WebApp Authentication.
-- **SAT Mining**: Users mine Satoshi (SAT) directly. The `balance` DB field stores SAT. No AXN/TON conversion exists.
+- **AXN Mining Machine**: Home page features a full AXN Mining Machine system (levels 1–25). Users start the CPU to mine AXN into a capacity buffer, then claim. Machine has independent Mining Level, Capacity Level, and CPU Level (each upgradable 1–25). Energy is required to start CPU (boolean; refill costs AXN). Health degrades when antivirus is OFF and virus attacks occur (-1 AXN + -5 health every 120s). Machine repairs cost AXN. Stored in `user_machines` table. All actions via `/api/axn-mining/*` routes.
+- **SAT Mining (legacy)**: The `balance` DB field stores AXN/SAT as integer. Old `/api/mining/state` route still exists but UI uses only the new AXN Mining Machine panel.
 - **Referral Mining Boost System**: Each active referral adds +0.1/h to the inviter's mining speed. Stored in `referral_mining_boost` (per-hour value) on the users table. Boosts are auto-removed if the friend leaves the required channel/group, and auto-restored when they rejoin. Referrer receives Telegram notifications on changes. Invite popup accessible via header button.
 - **Withdrawal System**: Direct SAT withdrawals to Bitcoin, Lightning Network, or FaucetPay. Minimum 100 SAT, 0% fee. Balance deducted from `balance` field on admin approval. Admin can approve/reject with automatic balance deduction/refund.
 - **ArcPay Integration**: Full integration for PDZ top-ups, including secure API credential handling, retry logic, and a webhook for payment notifications.
