@@ -718,6 +718,27 @@ export async function ensureDatabaseSchema(): Promise<void> {
     await db.execute(sql`CREATE INDEX IF NOT EXISTS idx_promotions_status ON promotions(status)`);
     await db.execute(sql`CREATE INDEX IF NOT EXISTS idx_task_completions_user_id ON task_completions(user_id)`);
     
+    // User machines table for AXN mining machine system
+    await db.execute(sql`
+      CREATE TABLE IF NOT EXISTS user_machines (
+        id VARCHAR PRIMARY KEY DEFAULT gen_random_uuid(),
+        user_id VARCHAR UNIQUE NOT NULL REFERENCES users(id),
+        mining_level INTEGER DEFAULT 1 NOT NULL,
+        capacity_level INTEGER DEFAULT 1 NOT NULL,
+        cpu_level INTEGER DEFAULT 1 NOT NULL,
+        has_energy BOOLEAN DEFAULT true NOT NULL,
+        antivirus_active BOOLEAN DEFAULT false NOT NULL,
+        machine_health INTEGER DEFAULT 100 NOT NULL,
+        cpu_start_time TIMESTAMP,
+        cpu_end_time TIMESTAMP,
+        last_claim_time TIMESTAMP DEFAULT NOW(),
+        last_virus_attack TIMESTAMP,
+        created_at TIMESTAMP DEFAULT NOW(),
+        updated_at TIMESTAMP DEFAULT NOW()
+      )
+    `);
+    console.log('✅ [MIGRATION] user_machines table created');
+
     console.log('✅ [MIGRATION] All tables and indexes created successfully');
     
   } catch (error) {

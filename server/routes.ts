@@ -1231,6 +1231,106 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // ============================================================
+  // AXN MINING MACHINE ROUTES
+  // ============================================================
+
+  app.get("/api/axn-mining/state", authenticateTelegram, async (req: any, res) => {
+    try {
+      const user = req.user?.user;
+      if (!user) return res.status(401).json({ message: "Not authenticated" });
+      // Apply virus damage before returning state
+      await storage.applyVirusDamage(user.id);
+      const state = await storage.getAxnMachineState(user.id);
+      res.json(state);
+    } catch (error) {
+      console.error("AXN machine state error:", error);
+      res.status(500).json({ message: "Internal server error" });
+    }
+  });
+
+  app.post("/api/axn-mining/start-cpu", authenticateTelegram, async (req: any, res) => {
+    try {
+      const user = req.user?.user;
+      if (!user) return res.status(401).json({ message: "Not authenticated" });
+      const result = await storage.startCpu(user.id);
+      if (!result.success) return res.status(400).json(result);
+      res.json(result);
+    } catch (error) {
+      console.error("AXN start CPU error:", error);
+      res.status(500).json({ message: "Internal server error" });
+    }
+  });
+
+  app.post("/api/axn-mining/claim", authenticateTelegram, async (req: any, res) => {
+    try {
+      const user = req.user?.user;
+      if (!user) return res.status(401).json({ message: "Not authenticated" });
+      const result = await storage.claimAxnMining(user.id);
+      if (!result.success) return res.status(400).json(result);
+      res.json(result);
+    } catch (error) {
+      console.error("AXN claim error:", error);
+      res.status(500).json({ message: "Internal server error" });
+    }
+  });
+
+  app.post("/api/axn-mining/refill-energy", authenticateTelegram, async (req: any, res) => {
+    try {
+      const user = req.user?.user;
+      if (!user) return res.status(401).json({ message: "Not authenticated" });
+      const result = await storage.refillEnergy(user.id);
+      if (!result.success) return res.status(400).json(result);
+      res.json(result);
+    } catch (error) {
+      console.error("AXN refill energy error:", error);
+      res.status(500).json({ message: "Internal server error" });
+    }
+  });
+
+  app.post("/api/axn-mining/repair", authenticateTelegram, async (req: any, res) => {
+    try {
+      const user = req.user?.user;
+      if (!user) return res.status(401).json({ message: "Not authenticated" });
+      const result = await storage.repairMachine(user.id);
+      if (!result.success) return res.status(400).json(result);
+      res.json(result);
+    } catch (error) {
+      console.error("AXN repair error:", error);
+      res.status(500).json({ message: "Internal server error" });
+    }
+  });
+
+  app.post("/api/axn-mining/toggle-antivirus", authenticateTelegram, async (req: any, res) => {
+    try {
+      const user = req.user?.user;
+      if (!user) return res.status(401).json({ message: "Not authenticated" });
+      const result = await storage.toggleAntivirus(user.id);
+      if (!result.success) return res.status(400).json(result);
+      res.json(result);
+    } catch (error) {
+      console.error("AXN antivirus toggle error:", error);
+      res.status(500).json({ message: "Internal server error" });
+    }
+  });
+
+  app.post("/api/axn-mining/upgrade", authenticateTelegram, async (req: any, res) => {
+    try {
+      const user = req.user?.user;
+      if (!user) return res.status(401).json({ message: "Not authenticated" });
+      const { type } = req.body;
+      if (!['mining', 'capacity', 'cpu'].includes(type)) {
+        return res.status(400).json({ message: "Invalid upgrade type. Use: mining, capacity, or cpu" });
+      }
+      const result = await storage.upgradeSubsystem(user.id, type);
+      if (!result.success) return res.status(400).json(result);
+      res.json(result);
+    } catch (error) {
+      console.error("AXN upgrade error:", error);
+      res.status(500).json({ message: "Internal server error" });
+    }
+  });
+
   // Debug route to check database columns
   app.get('/api/debug/db-schema', async (req: any, res) => {
     try {
