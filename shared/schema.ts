@@ -360,6 +360,24 @@ export const miningBoosts = pgTable("mining_boosts", {
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 
+// User machines table - AXN mining machine state per user
+export const userMachines = pgTable("user_machines", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").unique().notNull().references(() => users.id),
+  miningLevel: integer("mining_level").default(1).notNull(),
+  capacityLevel: integer("capacity_level").default(1).notNull(),
+  cpuLevel: integer("cpu_level").default(1).notNull(),
+  hasEnergy: boolean("has_energy").default(true).notNull(),
+  antivirusActive: boolean("antivirus_active").default(false).notNull(),
+  machineHealth: integer("machine_health").default(100).notNull(),
+  cpuStartTime: timestamp("cpu_start_time"),
+  cpuEndTime: timestamp("cpu_end_time"),
+  lastClaimTime: timestamp("last_claim_time").defaultNow(),
+  lastVirusAttack: timestamp("last_virus_attack"),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
 // Insert schemas
 export const insertUserSchema = createInsertSchema(users).omit({ id: true, createdAt: true, updatedAt: true });
 export const insertMiningBoostSchema = createInsertSchema(miningBoosts).omit({ id: true, createdAt: true });
@@ -436,3 +454,6 @@ export type BlockedCountry = typeof blockedCountries.$inferSelect;
 export type InsertBlockedCountry = z.infer<typeof insertBlockedCountrySchema>;
 export type Deposit = typeof deposits.$inferSelect;
 export type InsertDeposit = z.infer<typeof insertDepositSchema>;
+export type UserMachine = typeof userMachines.$inferSelect;
+export type InsertUserMachine = typeof userMachines.$inferInsert;
+export const insertUserMachineSchema = createInsertSchema(userMachines).omit({ id: true, createdAt: true, updatedAt: true });
